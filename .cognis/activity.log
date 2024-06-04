@@ -36,3 +36,4 @@
 2025-11-12T19:45:15  refactor: tidy internals
 2025-12-10T14:02:22  fix: handle empty input gracefully
 2026-04-04T09:19:29  perf: micro-optimization
+2024-06-04T11:15:45  feat: with great power comes great test coverage
