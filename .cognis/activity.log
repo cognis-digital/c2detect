@@ -38,3 +38,4 @@
 2026-04-04T09:19:29  perf: micro-optimization
 2024-06-04T11:15:45  feat: with great power comes great test coverage
 2024-06-27T18:32:52  feat(docs): fix off-by-one in line numbers
+2024-07-21T13:49:59  docs(fixtures): improve error messages with context
