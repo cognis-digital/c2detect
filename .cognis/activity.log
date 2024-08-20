@@ -40,3 +40,4 @@
 2024-06-27T18:32:52  feat(docs): fix off-by-one in line numbers
 2024-07-21T13:49:59  docs(fixtures): improve error messages with context
 2024-07-28T08:06:06  test(report): clarify the README quickstart
+2024-08-20T15:23:13  build(mcp): improve the demo scenario
