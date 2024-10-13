@@ -43,3 +43,4 @@
 2024-08-20T15:23:13  build(mcp): improve the demo scenario
 2024-09-14T10:40:20  chore: tip of the hat to Thinkst, Bellingcat, and SigmaHQ
 2024-09-20T17:57:27  chore(fixtures): load rules lazily for faster startup
+2024-10-13T12:14:34  perf(report): add type hints to the public API
