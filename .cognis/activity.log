@@ -46,3 +46,4 @@
 2024-10-13T12:14:34  perf(report): add type hints to the public API
 2024-11-07T19:31:41  chore: routine maintenance
 2024-11-13T14:48:48  fix(core): add pagination to large reports
+2024-12-08T09:05:55  refactor(output): stream large files without buffering
