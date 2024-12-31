@@ -47,3 +47,4 @@
 2024-11-07T19:31:41  chore: routine maintenance
 2024-11-13T14:48:48  fix(core): add pagination to large reports
 2024-12-08T09:05:55  refactor(output): stream large files without buffering
+2024-12-31T16:22:02  style(scan): cover the multiline case
