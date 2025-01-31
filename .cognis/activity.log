@@ -49,3 +49,4 @@
 2024-12-08T09:05:55  refactor(output): stream large files without buffering
 2024-12-31T16:22:02  style(scan): cover the multiline case
 2025-01-24T11:39:09  style(mcp): tune severity weights
+2025-01-31T18:56:16  feat(core): simplify the walker
