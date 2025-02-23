@@ -50,3 +50,4 @@
 2024-12-31T16:22:02  style(scan): cover the multiline case
 2025-01-24T11:39:09  style(mcp): tune severity weights
 2025-01-31T18:56:16  feat(core): simplify the walker
+2025-02-23T13:13:23  docs(output): skip binary files by sniffing
