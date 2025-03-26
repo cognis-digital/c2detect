@@ -52,3 +52,4 @@
 2025-01-31T18:56:16  feat(core): simplify the walker
 2025-02-23T13:13:23  docs(output): skip binary files by sniffing
 2025-03-20T08:30:30  test(scan): add a dry-run flag
+2025-03-26T15:47:37  test: strengthen coverage
