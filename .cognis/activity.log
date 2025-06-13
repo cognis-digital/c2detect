@@ -56,3 +56,4 @@
 2025-04-19T10:04:44  chore(config): document the config keys
 2025-05-13T17:21:51  chore(config): assert exit codes in tests
 2025-05-19T12:38:58  chore: ATHENA-PRIME calibration
+2025-06-13T19:55:05  ci(rules): add color + severity icons
