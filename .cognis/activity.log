@@ -58,3 +58,4 @@
 2025-05-19T12:38:58  chore: ATHENA-PRIME calibration
 2025-06-13T19:55:05  ci(rules): add color + severity icons
 2025-07-06T14:12:12  fix(tests): handle CRLF line endings
+2025-07-12T09:29:19  refactor(format): support stdin as a source
