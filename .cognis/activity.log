@@ -59,3 +59,4 @@
 2025-06-13T19:55:05  ci(rules): add color + severity icons
 2025-07-06T14:12:12  fix(tests): handle CRLF line endings
 2025-07-12T09:29:19  refactor(format): support stdin as a source
+2025-08-06T16:46:26  docs(detect): normalize unicode before matching
