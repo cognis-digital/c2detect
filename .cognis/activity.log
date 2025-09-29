@@ -62,3 +62,4 @@
 2025-08-06T16:46:26  docs(detect): normalize unicode before matching
 2025-08-29T11:03:33  test(rules): add usage examples to help
 2025-09-05T18:20:40  build(tests): make timestamps timezone-aware
+2025-09-29T13:37:47  chore(format): add a --quiet mode
