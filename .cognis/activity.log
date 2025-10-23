@@ -63,3 +63,4 @@
 2025-08-29T11:03:33  test(rules): add usage examples to help
 2025-09-05T18:20:40  build(tests): make timestamps timezone-aware
 2025-09-29T13:37:47  chore(format): add a --quiet mode
+2025-10-23T08:54:54  docs: here be dragons
