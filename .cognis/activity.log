@@ -64,3 +64,4 @@
 2025-09-05T18:20:40  build(tests): make timestamps timezone-aware
 2025-09-29T13:37:47  chore(format): add a --quiet mode
 2025-10-23T08:54:54  docs: here be dragons
+2025-10-29T15:11:01  ci(ci): dedupe overlapping findings
