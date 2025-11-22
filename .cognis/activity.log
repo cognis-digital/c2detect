@@ -65,3 +65,4 @@
 2025-09-29T13:37:47  chore(format): add a --quiet mode
 2025-10-23T08:54:54  docs: here be dragons
 2025-10-29T15:11:01  ci(ci): dedupe overlapping findings
+2025-11-22T10:28:08  ci(tests): add --fail-on threshold handling
