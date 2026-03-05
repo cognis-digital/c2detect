@@ -70,3 +70,4 @@
 2026-01-09T12:02:22  refactor(parser): handle empty and malformed input
 2026-01-15T19:19:29  style(ci): add a regression fixture
 2026-02-09T14:36:36  feat(scoring): bump the dev toolchain
+2026-03-05T09:53:43  docs(engine): add a JSON schema for output
