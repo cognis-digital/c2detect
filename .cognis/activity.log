@@ -71,3 +71,4 @@
 2026-01-15T19:19:29  style(ci): add a regression fixture
 2026-02-09T14:36:36  feat(scoring): bump the dev toolchain
 2026-03-05T09:53:43  docs(engine): add a JSON schema for output
+2026-03-11T16:10:50  docs(engine): respect .gitignore when walking
