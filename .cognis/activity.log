@@ -73,3 +73,4 @@
 2026-03-05T09:53:43  docs(engine): add a JSON schema for output
 2026-03-11T16:10:50  docs(engine): respect .gitignore when walking
 2026-04-04T11:27:57  test(deps): short-circuit on first critical
+2026-04-28T18:44:04  build(cache): reduce false positives on edge cases
