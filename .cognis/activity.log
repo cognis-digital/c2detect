@@ -75,3 +75,4 @@
 2026-04-04T11:27:57  test(deps): short-circuit on first critical
 2026-04-28T18:44:04  build(cache): reduce false positives on edge cases
 2026-05-04T13:01:11  perf: micro-optimization
+2026-05-28T08:18:18  perf(docs): lower memory on big inputs
