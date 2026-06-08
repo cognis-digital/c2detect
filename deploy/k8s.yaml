@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: c2detect, labels: { app: c2detect } }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: c2detect } }
+  template:
+    metadata: { labels: { app: c2detect } }
+    spec:
+      containers:
+        - name: c2detect
+          image: ghcr.io/cognis-digital/c2detect:latest
+          ports: [{ containerPort: 8000 }]
+          resources:
+            requests: { cpu: "50m", memory: "64Mi" }
+            limits: { cpu: "500m", memory: "256Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: c2detect }
+spec:
+  selector: { app: c2detect }
+  ports: [{ port: 80, targetPort: 8000 }]
