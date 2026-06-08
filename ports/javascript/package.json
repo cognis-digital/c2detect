@@ -1,0 +1,10 @@
+{
+  "name": "@cognis/c2detect",
+  "version": "0.2.0",
+  "description": "JavaScript port of c2detect (Cognis Neural Suite)",
+  "bin": {
+    "c2detect": "index.js"
+  },
+  "license": "LicenseRef-COCL-1.0",
+  "type": "module"
+}
