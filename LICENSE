@@ -1,17 +1,108 @@
-MIT License
+Cognis Open Collaboration License (COCL)
+Version 1.0 — 2026
 
-Copyright (c) 2026 Cognis Digital
+Copyright (c) 2026 Cognis Digital LLC (Wyoming, USA). All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This software and associated documentation files (the "Software") are made
+available by Cognis Digital LLC ("Licensor") under the following terms. By
+using, copying, modifying, or distributing the Software, or by contributing to
+it, you ("You") agree to these terms.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+------------------------------------------------------------------------------
+1. DEFINITIONS
+------------------------------------------------------------------------------
+1.1 "Non-Commercial Use" means use for personal projects, internal evaluation,
+    research, education, security testing You are authorized to perform, and
+    other use that is not Commercial Use.
+1.2 "Commercial Use" means any use of the Software, in whole or in part, that
+    is primarily intended for or directed toward commercial advantage or
+    monetary compensation, including without limitation: (a) use in production
+    to operate a business; (b) offering the Software (or a modified version) to
+    third parties as a hosted, managed, or software-as-a-service offering;
+    (c) redistributing the Software as, or as part of, a commercial product;
+    or (d) use by a for-profit entity beyond a 30-day internal evaluation.
+1.3 "Contribution" means any work of authorship You intentionally submit to
+    Licensor for inclusion in the Software (e.g., via a pull request, patch,
+    or issue attachment).
 
+------------------------------------------------------------------------------
+2. GRANT FOR NON-COMMERCIAL USE
+------------------------------------------------------------------------------
+Subject to Your compliance with this License, Licensor grants You a worldwide,
+royalty-free, non-exclusive, non-transferable license to use, reproduce,
+modify, and create derivative works of the Software, and to distribute such
+copies and derivative works, FOR NON-COMMERCIAL USE ONLY, provided that:
+  (a) You retain this License, the NOTICE file, and all copyright,
+      attribution, and license notices in all copies and derivative works; and
+  (b) You clearly mark any modified files as changed.
+
+------------------------------------------------------------------------------
+3. COMMERCIAL USE REQUIRES A SEPARATE LICENSE
+------------------------------------------------------------------------------
+Commercial Use of the Software is NOT granted under this License. To obtain a
+commercial license, contact Cognis Digital LLC at licensing@cognis.digital.
+Nothing in this License limits rights You may separately negotiate in writing
+with Licensor.
+
+------------------------------------------------------------------------------
+4. CONTRIBUTIONS ("COLLABORATION PULL")
+------------------------------------------------------------------------------
+4.1 Inbound license. By submitting a Contribution, You license that
+    Contribution to Licensor and to all recipients of the Software under the
+    terms of this License (inbound = outbound).
+4.2 Relicensing grant. You additionally grant Licensor a perpetual, worldwide,
+    royalty-free, irrevocable, sublicensable license to use, reproduce, modify,
+    distribute, and RELICENSE Your Contribution (including under commercial or
+    other terms) as part of the Software or Cognis Digital offerings. This
+    enables the dual-licensing model in Sections 2 and 3.
+4.3 Representations. You represent that each Contribution is Your original work
+    or that You have the right to submit it under these terms, and that it does
+    not knowingly violate any third party's rights.
+4.4 Recognition. Accepted Contributions are credited in the project history and,
+    where appropriate, in a CONTRIBUTORS or NOTICE file.
+
+------------------------------------------------------------------------------
+5. PATENT
+------------------------------------------------------------------------------
+Licensor grants You a license to its patent claims necessarily infringed by the
+Software as provided, limited to the scope of the use granted in Section 2. If
+You initiate patent litigation alleging the Software infringes a patent, the
+licenses granted to You under this License terminate immediately.
+
+------------------------------------------------------------------------------
+6. TRADEMARKS
+------------------------------------------------------------------------------
+This License does not grant permission to use the trade names, trademarks,
+service marks, or product names of Licensor, including "Cognis", "Cognis
+Digital", and associated logos, except as required for reasonable and customary
+attribution.
+
+------------------------------------------------------------------------------
+7. TERMINATION
+------------------------------------------------------------------------------
+This License terminates automatically if You breach it and do not cure the
+breach within 30 days of becoming aware of it. Upon termination You must cease
+all use and distribution of the Software, except that copies held by downstream
+recipients in compliance with this License survive.
+
+------------------------------------------------------------------------------
+8. DISCLAIMER OF WARRANTY AND LIMITATION OF LIABILITY
+------------------------------------------------------------------------------
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM THE SOFTWARE OR ITS USE.
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+------------------------------------------------------------------------------
+9. SECURITY-TOOL ACCEPTABLE USE
+------------------------------------------------------------------------------
+Several Cognis tools are dual-use security software. You agree to use them only
+against systems, data, and identities You own or are explicitly authorized in
+writing to test, and in compliance with all applicable laws. You are solely
+responsible for Your use.
+
+------------------------------------------------------------------------------
+This is a source-available license. It is NOT an OSI-approved "open source"
+license. For questions: legal@cognis.digital · https://cognis.digital

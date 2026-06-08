@@ -7,13 +7,13 @@ name = "cognis-c2detect"
 version = "0.1.0"
 description = "C2 server fingerprinter — Cobalt Strike, Sliver, Mythic, Havoc detection"
 authors = [{name = "Cognis Digital", email = "suite@cognis.digital"}]
-license = {text = "MIT"}
+license = {text = "LicenseRef-COCL-1.0"}
 requires-python = ">=3.10"
 readme = "README.md"
 keywords = ["red-team", "cognis-digital", "cognis-neural-suite", "security"]
 classifiers = [
     "Development Status :: 4 - Beta",
-    "License :: OSI Approved :: MIT License",
+    "License :: Other/Proprietary License",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",

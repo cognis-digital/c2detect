@@ -1,11 +1,11 @@
 # C2DETECT — C2 server fingerprinter — Cobalt Strike, Sliver, Mythic, Havoc, Brute Ratel
 
 > Part of the **[Cognis Neural Suite](https://github.com/cognis-digital)** by [Cognis Digital](https://cognis.digital)
-> MIT License · domain: `red-team`
+> Cognis Open Collaboration License (COCL) v1.0 · domain: `red-team`
 
 [![PyPI](https://img.shields.io/pypi/v/cognis-c2detect.svg)](https://pypi.org/project/cognis-c2detect/)
 [![CI](https://github.com/cognis-digital/c2detect/actions/workflows/ci.yml/badge.svg)](https://github.com/cognis-digital/c2detect/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License: COCL 1.0](https://img.shields.io/badge/License-COCL%201.0-2b6cb0.svg)](LICENSE)
 
 C2 server fingerprinter — Cobalt Strike, Sliver, Mythic, Havoc, Brute Ratel.
 
@@ -50,7 +50,7 @@ Every Suite tool ships an MCP server, so Cognis.Studio agents can call them as s
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Source-available under the **Cognis Open Collaboration License (COCL) v1.0** — free for personal, internal-evaluation, research, and educational use; **commercial / production use requires a license** (licensing@cognis.digital). See [LICENSE](LICENSE) and [CONTRIBUTING.md](CONTRIBUTING.md) for the collaboration-pull model.
 
 ## About
 
