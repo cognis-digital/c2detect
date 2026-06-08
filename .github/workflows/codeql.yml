@@ -1,0 +1,14 @@
+name: codeql
+on:
+  push: { branches: [main] }
+  pull_request: { branches: [main] }
+  schedule: [{ cron: "27 3 * * 1" }]
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    permissions: { security-events: write, actions: read, contents: read }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with: { languages: python }
+      - uses: github/codeql-action/analyze@v3

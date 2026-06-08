@@ -1,0 +1,13 @@
+name: stale
+on: { schedule: [{ cron: "17 1 * * *" }] }
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions: { issues: write, pull-requests: write }
+    steps:
+      - uses: actions/stale@v9
+        with:
+          days-before-stale: 60
+          days-before-close: 14
+          stale-issue-message: "This issue has been quiet for a while — comment to keep it open."
+          stale-pr-message: "This PR has been quiet for a while — comment to keep it open."
