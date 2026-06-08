@@ -18,9 +18,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-dependencies = [
-    "cognis-core>=0.1.0",
-]
+dependencies = []
 
 [project.optional-dependencies]
 mcp = ["mcp>=1.0"]
