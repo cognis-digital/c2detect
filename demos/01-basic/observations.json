@@ -1,0 +1,12 @@
+{
+  "observations": [
+    {
+      "host": "10.0.0.5",
+      "port": 50050,
+      "http_paths": [
+        "/submit.php"
+      ],
+      "cert_cn": "Major Cobalt Strike"
+    }
+  ]
+}

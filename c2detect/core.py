@@ -1,48 +1,49 @@
-"""C2DETECT — C2 fingerprint matcher."""
+"""c2detect core — DEFENSIVE C2 fingerprinting from network observations (no attack capability).
+
+Matches JA3/JA4/JARM hashes, ports, and HTTP/cert indicators in an observations JSON
+against a curated table of public C2-framework signatures for blue-team triage.
+"""
 from __future__ import annotations
-import json, time
-from pathlib import Path
-from cognis_core import Finding, ScanResult, score
+import json
+TOOL_NAME = "c2detect"; TOOL_VERSION = "1.0.0"
 
-TOOL_NAME = "C2DETECT"
-TOOL_VERSION = "0.1.0"
+# Public, well-known indicators (illustrative; extend via PRs). Defensive detection only.
+SIGS = [
+    {"family": "Cobalt Strike", "jarm": ["07d14d16d21d21d07c42d41d00041d24a458a375eef0c576d23a7bab9a9fb1"],
+     "ports": [50050], "http": ["/submit.php", "/__utm.gif"], "cert_cn": ["Major Cobalt Strike"]},
+    {"family": "Sliver", "jarm": ["3fd21d20d00021d20741d20d41d21d3e1bcf2bf6e9d2a9d6a1f6c9b7e7a3f1"],
+     "ports": [31337, 8888], "http": ["/health"], "cert_cn": []},
+    {"family": "Metasploit/Meterpreter", "jarm": [], "ports": [4444, 4443],
+     "http": ["/INITM", "/INITJM"], "cert_cn": []},
+    {"family": "Mythic", "jarm": [], "ports": [7443], "http": ["/agent_message", "/new/"], "cert_cn": []},
+    {"family": "Havoc", "jarm": [], "ports": [40056], "http": ["/havoc"], "cert_cn": []},
+    {"family": "Brute Ratel", "jarm": [], "ports": [], "http": ["/admin/"], "cert_cn": ["BruteRatel"]},
+]
 
-# Snapshot of publicly-known C2 JARM hashes — community contributed.
-KNOWN_C2 = {
-    "07d14d16d21d21d07c42d41d00041d24a458a375eef0c576d23a7bab9a9fb1": ("Cobalt Strike", "critical"),
-    "2ad2ad0002ad2ad0002ad2ad2ad2ad9c0d6f1e9bcb5b8b8d8f8b8c8f8e8d8c": ("Sliver",        "critical"),
-    "29d29d20d29d29d21c42d43d000000ec0c8b6f5cd5d5b5e5f5b5a5d5c5e5f5": ("Mythic",         "high"),
-    "3fd3fd16d29d3fd3fd42d43d00041d2c3e3f3e3d3c3b3a3938373635343332": ("Brute Ratel",    "critical"),
-}
+def score(obs):
+    """obs: dict with optional jarm, ja3, port, http_paths[], cert_cn. Returns ranked matches."""
+    results = []
+    for sig in SIGS:
+        hits, reasons = 0, []
+        if obs.get("jarm") and obs["jarm"] in sig["jarm"]:
+            hits += 3; reasons.append("JARM match")
+        if obs.get("port") in sig["ports"]:
+            hits += 2; reasons.append(f"port {obs.get('port')}")
+        for path in (obs.get("http_paths") or []):
+            if any(h in path for h in sig["http"]):
+                hits += 2; reasons.append(f"URI {path}")
+        if obs.get("cert_cn") and any(c.lower() in obs["cert_cn"].lower() for c in sig["cert_cn"]):
+            hits += 3; reasons.append("cert CN")
+        if hits:
+            conf = min(1.0, hits / 6)
+            results.append({"family": sig["family"], "confidence": round(conf, 2),
+                            "severity": "high" if conf >= 0.5 else "medium", "reasons": reasons})
+    return sorted(results, key=lambda r: -r["confidence"])
 
-def scan(target: str, **opts) -> ScanResult:
-    t0 = time.time()
-    result = ScanResult(tool_name=TOOL_NAME, tool_version=TOOL_VERSION, target=str(target))
-    p = Path(target)
-    observations = []
-    if p.is_file():
-        observations = json.loads(p.read_text())
-    elif p.is_dir():
-        for jf in p.rglob("*.json"):
-            try:
-                observations.extend(json.loads(jf.read_text()))
-            except Exception:
-                pass
-    result.items_scanned = len(observations)
-    for obs in observations:
-        h = obs.get("jarm") or obs.get("ja4")
-        if h and h in KNOWN_C2:
-            framework, sev = KNOWN_C2[h]
-            result.add(Finding(
-                id=f"C2-{framework.upper().replace(' ','')}",
-                severity=sev, weight=3.0 if sev=="critical" else 2.5,
-                title=f"C2_FRAMEWORK_{framework.upper()}",
-                description=f"Host {obs.get('ip','?')}:{obs.get('port','?')} fingerprint matches {framework}",
-                location=f"{obs.get('ip')}:{obs.get('port')}",
-                remediation="Block egress to host. Hunt for compromised internal hosts that contacted this C2.",
-                category="c2-detection",
-                metadata=obs,
-            ))
-    result.composite_score, result.risk_level = score(result.findings)
-    result.scan_duration_ms = int((time.time()-t0)*1000)
-    return result
+def scan(observations):
+    """observations: list of obs dicts. Returns findings."""
+    out = []
+    for i, obs in enumerate(observations):
+        for m in score(obs):
+            out.append({"index": i, "host": obs.get("host", "?"), **m})
+    return out
