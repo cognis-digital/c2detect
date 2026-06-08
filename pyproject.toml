@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cognis-c2detect"
+version = "0.1.0"
+description = "C2 server fingerprinter — Cobalt Strike, Sliver, Mythic, Havoc detection"
+authors = [{name = "Cognis Digital", email = "suite@cognis.digital"}]
+license = {text = "MIT"}
+requires-python = ">=3.10"
+readme = "README.md"
+keywords = ["red-team", "cognis-digital", "cognis-neural-suite", "security"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "cognis-core>=0.1.0",
+]
+
+[project.optional-dependencies]
+mcp = ["mcp>=1.0"]
+web = ["fastapi>=0.110", "uvicorn>=0.27"]
+dev = ["pytest>=8.0"]
+
+[project.urls]
+Homepage = "https://cognis.digital"
+Repository = "https://github.com/cognis-digital/c2detect"
+
+[project.scripts]
+c2detect = "c2detect.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["c2detect"]

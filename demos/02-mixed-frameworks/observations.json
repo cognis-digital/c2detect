@@ -1,0 +1,20 @@
+[
+  {
+    "ip": "203.0.113.50",
+    "port": 443,
+    "jarm": "2ad2ad0002ad2ad0002ad2ad2ad2ad9c0d6f1e9bcb5b8b8d8f8b8c8f8e8d8c",
+    "source": "sliver"
+  },
+  {
+    "ip": "203.0.113.51",
+    "port": 443,
+    "jarm": "3fd3fd16d29d3fd3fd42d43d00041d2c3e3f3e3d3c3b3a3938373635343332",
+    "source": "brute_ratel"
+  },
+  {
+    "ip": "203.0.113.52",
+    "port": 443,
+    "jarm": "29d29d20d29d29d21c42d43d000000ec0c8b6f5cd5d5b5e5f5b5a5d5c5e5f5",
+    "source": "mythic"
+  }
+]
