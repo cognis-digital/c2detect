@@ -1,0 +1,141 @@
+name: "c2detect"
+description: "Scan TLS/network telemetry for known C2-framework fingerprints (Cobalt Strike, Sliver, Mythic, Havoc, Brute Ratel, …). Defensive triage only."
+author: "Cognis Digital"
+branding:
+  icon: "shield"
+  color: "purple"
+
+inputs:
+  path:
+    description: "File or directory of observation/telemetry to scan."
+    required: false
+    default: "."
+  format:
+    description: "Output format: table | json | sarif | html | badge."
+    required: false
+    default: "sarif"
+  fail-on:
+    description: "Fail the step if a match at/above this severity is found (critical|high|medium|low|info). Empty = never fail on severity."
+    required: false
+    default: "high"
+  threshold:
+    description: "Minimum confidence (0-100) to report a match."
+    required: false
+    default: "35"
+  output:
+    description: "Write the report to this file (in addition to stdout)."
+    required: false
+    default: "c2detect-report.sarif"
+  comment-pr:
+    description: "If 'true' and run on a pull_request, post a findings comment via gh api."
+    required: false
+    default: "true"
+
+outputs:
+  findings:
+    description: "Number of C2 indicators found."
+    value: ${{ steps.scan.outputs.findings }}
+  badge:
+    description: "shields.io endpoint JSON for a status badge."
+    value: ${{ steps.scan.outputs.badge }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Run c2detect
+      id: scan
+      shell: bash
+      env:
+        C2_PATH: ${{ inputs.path }}
+        C2_FORMAT: ${{ inputs.format }}
+        C2_FAIL_ON: ${{ inputs.fail-on }}
+        C2_THRESHOLD: ${{ inputs.threshold }}
+        C2_OUTPUT: ${{ inputs.output }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        set -uo pipefail
+        # Run from the action checkout (stdlib-only, no install needed).
+        PY="python"
+        run_c2() { ( cd "$ACTION_PATH" && "$PY" -m c2detect "$@" ); }
+
+        # Primary report in the requested format -> file + stdout.
+        run_c2 scan "$GITHUB_WORKSPACE/$C2_PATH" \
+          --threshold "$C2_THRESHOLD" --format "$C2_FORMAT" \
+          | tee "$GITHUB_WORKSPACE/$C2_OUTPUT" || true
+
+        # Always compute a machine-readable badge + finding count.
+        BADGE_JSON="$(run_c2 scan "$GITHUB_WORKSPACE/$C2_PATH" \
+          --threshold "$C2_THRESHOLD" --format badge || true)"
+        FINDINGS="$(run_c2 scan "$GITHUB_WORKSPACE/$C2_PATH" \
+          --threshold "$C2_THRESHOLD" --format json 2>/dev/null \
+          | "$PY" -c 'import sys,json; print(json.load(sys.stdin).get("match_count",0))' || echo 0)"
+
+        {
+          echo "findings=$FINDINGS"
+          echo "badge<<__C2_BADGE__"
+          echo "$BADGE_JSON"
+          echo "__C2_BADGE__"
+        } >> "$GITHUB_OUTPUT"
+
+        # Save an HTML report artifact users can download from the run.
+        run_c2 scan "$GITHUB_WORKSPACE/$C2_PATH" \
+          --threshold "$C2_THRESHOLD" --format html \
+          > "$GITHUB_WORKSPACE/c2detect-report.html" || true
+
+    - name: Upload report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: c2detect-report
+        path: |
+          ${{ github.workspace }}/${{ inputs.output }}
+          ${{ github.workspace }}/c2detect-report.html
+        if-no-files-found: ignore
+
+    - name: Comment findings on PR
+      if: ${{ inputs.comment-pr == 'true' && github.event_name == 'pull_request' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        FINDINGS: ${{ steps.scan.outputs.findings }}
+        BADGE: ${{ steps.scan.outputs.badge }}
+        PR: ${{ github.event.pull_request.number }}
+        REPO: ${{ github.repository }}
+      run: |
+        set -uo pipefail
+        if [ "${FINDINGS:-0}" = "0" ]; then
+          BODY="### 🛡️ c2detect — clean ✓\nNo C2-framework fingerprints found in the scanned telemetry."
+        else
+          BODY="### 🛡️ c2detect — **${FINDINGS}** C2 indicator(s) found\nSee the **c2detect-report** artifact (SARIF + HTML) on this run for details.\n\n<sub>badge: \`${BADGE}\`</sub>"
+        fi
+        # Post via the GitHub REST API (gh api). Non-fatal if it can't comment.
+        printf '%b' "$BODY" \
+          | gh api "repos/${REPO}/issues/${PR}/comments" \
+              -f body=@- >/dev/null 2>&1 \
+          || echo "note: could not post PR comment (token scope?); continuing."
+
+    - name: Enforce severity gate
+      if: ${{ inputs.fail-on != '' }}
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        C2_PATH: ${{ inputs.path }}
+        C2_FAIL_ON: ${{ inputs.fail-on }}
+        C2_THRESHOLD: ${{ inputs.threshold }}
+      run: |
+        set -uo pipefail
+        ( cd "$ACTION_PATH" && python -m c2detect scan \
+            "$GITHUB_WORKSPACE/$C2_PATH" \
+            --threshold "$C2_THRESHOLD" \
+            --fail-on "$C2_FAIL_ON" --format table )
+        rc=$?
+        if [ "$rc" -eq 2 ]; then
+          echo "::error::c2detect found a match at/above '$C2_FAIL_ON' severity."
+          exit 1
+        fi
+        exit 0

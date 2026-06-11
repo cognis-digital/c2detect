@@ -25,19 +25,80 @@ from .core import (
     Observation,
     ScanResult,
     fails_gate,
+    fails_gate_with_ai,
     list_signatures,
     load_records,
+    merge_ai_findings,
     observation_from_text,
     scan_observation,
+    to_badge,
+    to_html,
     to_sarif,
 )
 
 # Files we are willing to slurp when a directory is passed to `scan`.
 _TEXT_EXT = {".json", ".txt", ".log", ".jsonl", ".ndjson", ".csv", ".tsv", ".pcaplog"}
 
+_FORMATS = ("table", "json", "sarif", "html", "badge")
+
 
 def _read_stdin() -> str:
     return sys.stdin.read()
+
+
+def _run_ai_pass(
+    blobs: List[str],
+    results: List[ScanResult],
+) -> dict:
+    """Optional, opt-in LLM pass over the same source the scanner already saw.
+
+    Returns ``{index: [finding,...]}`` keyed by ScanResult index. NEVER raises:
+    on a disabled/unreachable backend it prints a clear note to stderr and
+    returns ``{}`` so the deterministic rule findings stand alone. With ``--ai``
+    absent this function is never called, keeping output byte-for-byte
+    deterministic.
+    """
+    try:
+        from .ai_backend import CognisAIBackend
+    except Exception as exc:  # pragma: no cover - import guard
+        print(f"note: AI backend unavailable ({exc}); using rule findings only.",
+              file=sys.stderr)
+        return {}
+
+    backend = CognisAIBackend()
+    if not backend.is_enabled():
+        print("note: --ai requested but no backend configured "
+              "(set COGNIS_AI_BACKEND or COGNIS_AI_ENDPOINT); "
+              "continuing with rule findings only.", file=sys.stderr)
+        return {}
+    if not backend.health():
+        print(f"note: --ai backend at {backend.base_url} is unreachable; "
+              "continuing with rule findings only.", file=sys.stderr)
+        return {}
+
+    # The scanner processes telemetry text/JSON; feed the SAME blobs to the LLM.
+    source = "\n\n".join(blobs).strip()
+    if not source:
+        return {}
+    try:
+        findings = backend.analyze_code(
+            source,
+            context="Telemetry / observation records under C2-infrastructure "
+                    "triage. Report indicators of command-and-control beaconing, "
+                    "suspicious TLS fingerprints, staging URIs or implant cadence.",
+            focus="C2 / beaconing / implant indicators and novel evasions.",
+        )
+    except Exception as exc:  # analyze_code is contracted not to raise, belt+braces
+        print(f"note: AI analysis errored ({exc}); using rule findings only.",
+              file=sys.stderr)
+        return {}
+
+    if not findings or not results:
+        return {}
+    # Attach all AI findings to the first observation, deduped against its rules.
+    # (The LLM sees the merged source, so a single bucket is the honest mapping.)
+    kept = merge_ai_findings(results[0], findings)
+    return {0: kept} if kept else {}
 
 
 def _sev_rank(sev: str) -> int:
@@ -121,12 +182,17 @@ def _build_parser() -> argparse.ArgumentParser:
     p_scan.add_argument("--host", default="", help="Label for the host.")
     p_scan.add_argument("--threshold", type=int, default=DEFAULT_THRESHOLD,
                         help=f"Min confidence to report (default {DEFAULT_THRESHOLD}).")
-    p_scan.add_argument("--format", choices=("table", "json", "sarif"),
-                        default="table")
+    p_scan.add_argument("--format", choices=_FORMATS, default="table",
+                        help="table | json | sarif | html | badge")
     p_scan.add_argument("--fail-on", dest="fail_on",
                         choices=tuple(SEVERITY_ORDER), default=None,
                         help="Exit non-zero if a match at/above this severity "
                              "is found (CI gate).")
+    p_scan.add_argument("--ai", action="store_true",
+                        help="OPT-IN: also run the Cognis fleet LLM over the same "
+                             "source and merge novel findings (off by default; "
+                             "needs COGNIS_AI_BACKEND/ENDPOINT; degrades to rules "
+                             "if backend is down).")
 
     # match — explicit indicators on the command line.
     p_match = sub.add_parser(
@@ -141,11 +207,21 @@ def _build_parser() -> argparse.ArgumentParser:
     p_match.add_argument("--uri", action="append", default=[], dest="uris")
     p_match.add_argument("--banner", default="")
     p_match.add_argument("--cert", default="")
+    p_match.add_argument("--ja4x", default="")
+    p_match.add_argument("--ja3s", default="")
+    p_match.add_argument("--ua", dest="user_agent", default="",
+                         help="HTTP User-Agent string.")
+    p_match.add_argument("--beacon-interval", dest="beacon_interval", type=float,
+                         default=None, help="Observed mean beacon interval (s).")
+    p_match.add_argument("--jitter", type=float, default=None,
+                         help="Observed jitter fraction (0..1) or percent.")
     p_match.add_argument("--threshold", type=int, default=DEFAULT_THRESHOLD)
-    p_match.add_argument("--format", choices=("table", "json", "sarif"),
-                         default="table")
+    p_match.add_argument("--format", choices=_FORMATS, default="table",
+                         help="table | json | sarif | html | badge")
     p_match.add_argument("--fail-on", dest="fail_on",
                          choices=tuple(SEVERITY_ORDER), default=None)
+    p_match.add_argument("--ai", action="store_true",
+                         help="OPT-IN LLM pass (off by default).")
 
     # db — list bundled signatures.
     p_db = sub.add_parser("db", help="List the bundled C2 signature database.")
@@ -190,8 +266,21 @@ def _results_for_blob(blob: str, host: str, threshold: int) -> List[ScanResult]:
     return [scan_observation(obs, threshold=threshold)]
 
 
-def _emit(results: List[ScanResult], fmt: str, fail_on: Optional[str]) -> int:
-    if fmt == "sarif":
+def _ai_total(ai_by_index: Optional[dict]) -> int:
+    return sum(len(v) for v in (ai_by_index or {}).values())
+
+
+def _emit(
+    results: List[ScanResult],
+    fmt: str,
+    fail_on: Optional[str],
+    ai_by_index: Optional[dict] = None,
+) -> int:
+    if fmt == "badge":
+        print(json.dumps(to_badge(results, ai_by_index), indent=2))
+    elif fmt == "html":
+        print(to_html(results, ai_by_index))
+    elif fmt == "sarif":
         print(json.dumps(to_sarif(results), indent=2))
     elif fmt == "json":
         payload = {
@@ -206,18 +295,36 @@ def _emit(results: List[ScanResult], fmt: str, fail_on: Optional[str]) -> int:
             payload["match_count"] = results[0].count
             payload["matches"] = [m.as_dict() for m in results[0].matches]
             payload["host"] = results[0].observation.host
+        if ai_by_index:
+            payload["ai_findings"] = [
+                f for findings in ai_by_index.values() for f in findings
+            ]
+            payload["ai_finding_count"] = _ai_total(ai_by_index)
         print(json.dumps(payload, indent=2, sort_keys=False))
     else:
         chunks = [_render_scan_table(r) for r in results]
         print(("\n\n".join(chunks)) if chunks else "(no observations)")
         total = sum(r.count for r in results)
+        if ai_by_index:
+            print("\n  AI-assisted findings (source=ai):")
+            for findings in ai_by_index.values():
+                for f in findings:
+                    tag = " [novel candidate]" if f.get("candidate_novel") else ""
+                    print(f"    - [{f.get('severity', 'info').upper()}] "
+                          f"{f.get('title', '(untitled)')}{tag}")
         print(f"\n{TOOL_NAME}: {total} C2 indicator(s) across "
-              f"{len(results)} observation(s)")
+              f"{len(results)} observation(s)"
+              + (f" + {_ai_total(ai_by_index)} AI finding(s)"
+                 if ai_by_index else ""))
 
     if fail_on is not None:
-        return 2 if fails_gate(results, fail_on) else 0
-    # Default: non-zero when any C2 match is found (pipeline signal).
-    return 1 if any(r.count for r in results) else 0
+        gated = (fails_gate_with_ai(results, ai_by_index, fail_on)
+                 if ai_by_index else fails_gate(results, fail_on))
+        return 2 if gated else 0
+    # Default: non-zero when any C2 match (rule or AI) is found (pipeline signal).
+    if any(r.count for r in results) or _ai_total(ai_by_index):
+        return 1
+    return 0
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -240,16 +347,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if not results:
             results = [scan_observation(Observation(host=args.host),
                                         threshold=args.threshold)]
-        return _emit(results, args.format, args.fail_on)
+        ai_by_index = _run_ai_pass(blobs, results) if args.ai else None
+        return _emit(results, args.format, args.fail_on, ai_by_index)
 
     if args.command == "match":
         obs = Observation(
-            host=args.host, ja4=args.ja4, ja4s=args.ja4s, ja3=args.ja3,
-            jarm=args.jarm, port=args.port, uris=list(args.uris),
-            http_banner=args.banner, cert=args.cert,
+            host=args.host, ja4=args.ja4, ja4s=args.ja4s, ja4x=args.ja4x,
+            ja3=args.ja3, ja3s=args.ja3s, jarm=args.jarm, port=args.port,
+            uris=list(args.uris), http_banner=args.banner,
+            user_agent=args.user_agent, cert=args.cert,
+            beacon_interval=args.beacon_interval, jitter=args.jitter,
         )
         result = scan_observation(obs, threshold=args.threshold)
-        return _emit([result], args.format, args.fail_on)
+        ai_by_index = None
+        if args.ai:
+            blob = json.dumps(obs.as_dict())
+            ai_by_index = _run_ai_pass([blob], [result])
+        return _emit([result], args.format, args.fail_on, ai_by_index)
 
     if args.command == "db":
         rows = list_signatures()

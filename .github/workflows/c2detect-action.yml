@@ -1,0 +1,68 @@
+name: c2detect-action
+
+# Reusable C2 fingerprint scan for any repo's CI.
+#
+# Drop this into your own project as .github/workflows/c2detect.yml and it will
+# scan your telemetry/observation files on every push and PR, comment findings
+# on the PR, upload a SARIF + HTML report, and fail the build on --fail-on.
+#
+#   - uses: cognis-digital/c2detect@main
+#     with:
+#       path: telemetry/
+#       format: sarif
+#       fail-on: high
+#
+# Defensive triage only — no network, no active capability.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      path:
+        description: "File/dir to scan"
+        required: false
+        default: "demos"
+
+permissions:
+  contents: read
+  pull-requests: write   # required to comment findings on PRs
+  security-events: write # required to upload SARIF to code-scanning
+
+jobs:
+  c2detect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Self-use: in this repo the action lives here (./). Downstream consumers
+      # instead write `uses: cognis-digital/c2detect@main`.
+      - name: Scan for C2 fingerprints
+        id: c2
+        uses: ./
+        with:
+          path: ${{ github.event.inputs.path || 'demos' }}
+          format: sarif
+          fail-on: critical
+          threshold: "35"
+          output: c2detect.sarif
+          comment-pr: "true"
+
+      - name: Upload SARIF to code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: c2detect.sarif
+        continue-on-error: true
+
+      - name: Summary
+        if: always()
+        shell: bash
+        run: |
+          echo "### c2detect" >> "$GITHUB_STEP_SUMMARY"
+          echo "Findings: ${{ steps.c2.outputs.findings }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          echo '${{ steps.c2.outputs.badge }}' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

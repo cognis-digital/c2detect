@@ -22,7 +22,7 @@ c2detect scan .            # → prioritized findings in seconds
 
 ## Contents
 
-- [Why c2detect?](#why) · [Features](#features) · [Quick start](#quick-start) · [Example](#example) · [Architecture](#architecture) · [AI stack](#ai-stack) · [How it compares](#how-it-compares) · [Integrations](#integrations) · [Install anywhere](#install-anywhere) · [Related](#related) · [Contributing](#contributing)
+- [Why c2detect?](#why) · [Features](#features) · [Quick start](#quick-start) · [Example](#example) · [Detection depth](#detection-depth) · [GitHub Action](#github-action) · [Status badge](#status-badge) · [HTML report](#html-report) · [AI mode](#ai-mode) · [Architecture](#architecture) · [AI stack](#ai-stack) · [How it compares](#how-it-compares) · [Integrations](#integrations) · [Install anywhere](#install-anywhere) · [Related](#related) · [Contributing](#contributing)
 
 <a name="why"></a>
 ## Why c2detect?
@@ -36,9 +36,14 @@ C2 server fingerprinter — Cobalt Strike, Sliver, Mythic, Havoc, Brute Ratel �
 <a name="features"></a>
 ## Features
 
-- ✅ Scan
-- ✅ Runs on Linux/macOS/Windows · Docker · devcontainer
+- ✅ **20 C2 families** fingerprinted — Cobalt Strike, Metasploit, Sliver, Covenant, Mythic, Brute Ratel, Empire, Havoc, PoshC2, Merlin, Deimos, NimPlant, Villain, Caldera, Pupy, Koadic, SILENTTRINITY, Godzilla + generic self-signed/beaconing heuristics
+- ✅ **TLS + behavioral indicators** — JA4 / JA4S / JA4X / JA3 / JA3S / JARM, plus **beacon-interval/jitter cadence**, checksum/encoded **URI regexes**, default **User-Agents**, cert quirks and ports
+- ✅ Output: **table · JSON · SARIF · HTML report · shields.io badge**
+- ✅ **Reusable GitHub Action** (`uses: cognis-digital/c2detect@main`) — comments findings on PRs, fails CI on `--fail-on`
+- ✅ **Opt-in AI mode** (`--ai`) over your local Cognis fleet — **off by default**, deterministic without it
+- ✅ Runs on Linux/macOS/Windows · Docker · devcontainer · MCP server
 - ✅ Ports in Python, JavaScript, Go, and Rust (`ports/`)
+- 🛡️ Strictly **defensive** — detection from observations only, no network, no active capability
 
 <div align="right"><a href="#top">↑ back to top</a></div>
 
@@ -65,6 +70,109 @@ $ c2detect scan .
 
   2 findings · risk score 5 · 38ms
 ```
+
+<div align="right"><a href="#top">↑ back to top</a></div>
+
+<a name="detection-depth"></a>
+## Detection depth
+
+`c2detect` scores every observation against a bundled DB of **20 C2 families**.
+Each family is a blend of *observational* indicators — nothing describes an
+attack, only the out-of-the-box defaults a defender can spot:
+
+| Indicator class | Examples |
+|---|---|
+| **TLS fingerprints** | JA4, JA4S, JA4X (x509), JA3, JA3S, JARM |
+| **Behavioral** | beacon interval window + jitter ceiling (e.g. CS default 60s / ~0% jitter), URI checksum/encoding regexes |
+| **HTTP** | default User-Agent strings, spoofed `Server` banners, default listener URIs |
+| **PKI** | certificate subject/issuer/serial quirks (e.g. *“Major Cobalt Strike”*, serial `146473198`) |
+| **Network** | default listener ports (weak, corroborating only) |
+
+Confidence (0–100) is a weighted blend; two or more *strong* indicators earn a
+corroboration bonus. Tune the floor with `--threshold`. See
+[`demos/03-behavioral`](demos/03-behavioral) for the cadence/jitter heuristics.
+
+<div align="right"><a href="#top">↑ back to top</a></div>
+
+<a name="github-action"></a>
+## GitHub Action
+
+Scan telemetry in CI, comment findings on the PR, and fail on a severity floor —
+drop this into any repo as `.github/workflows/c2detect.yml`:
+
+```yaml
+name: c2detect
+on: [push, pull_request]
+permissions:
+  contents: read
+  pull-requests: write     # to comment findings on PRs
+  security-events: write   # to upload SARIF
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cognis-digital/c2detect@main
+        with:
+          path: telemetry/        # file or dir to scan
+          format: sarif           # table | json | sarif | html | badge
+          fail-on: high           # fail the build at/above this severity
+          threshold: "35"         # min confidence to report
+          comment-pr: "true"      # post a findings comment via gh api
+```
+
+The action uploads a **SARIF + HTML** report artifact and exposes
+`steps.<id>.outputs.findings` and `steps.<id>.outputs.badge`.
+
+<div align="right"><a href="#top">↑ back to top</a></div>
+
+<a name="status-badge"></a>
+## Status badge
+
+`--format badge` prints a [shields.io endpoint](https://shields.io/endpoint)
+JSON you can host and reference:
+
+```bash
+c2detect scan telemetry/ --format badge > badge.json
+# {"schemaVersion":1,"label":"c2detect","message":"clean","color":"brightgreen"}
+```
+
+```md
+![c2detect](https://img.shields.io/endpoint?url=https://YOUR_HOST/badge.json)
+```
+
+<div align="right"><a href="#top">↑ back to top</a></div>
+
+<a name="html-report"></a>
+## HTML report
+
+```bash
+c2detect scan telemetry/ --format html > report.html   # clean, self-contained
+```
+
+A single self-contained HTML file (no external assets) with per-host findings,
+severity pills, indicator breakdown, and any AI-suggested candidates.
+
+<div align="right"><a href="#top">↑ back to top</a></div>
+
+<a name="ai-mode"></a>
+## AI mode (opt-in, off by default)
+
+Add `--ai` to layer a local-fleet LLM pass over the **same** source the scanner
+already processed. AI findings are merged in, tagged `source="ai"`, novel
+candidates flagged, and **deduped** against the deterministic rule findings:
+
+```bash
+# Point at a LOCAL OpenAI-compatible endpoint (nothing leaves the box):
+export COGNIS_AI_BACKEND=uncensored-fleet     # or COGNIS_AI_ENDPOINT=http://127.0.0.1:8774/v1
+c2detect scan telemetry/ --ai
+```
+
+Guarantees:
+
+- **Off by default.** Without `--ai`, output is **byte-for-byte deterministic** and contains no AI keys.
+- **Never crashes.** If `--ai` is given but no backend is configured, or the backend is unreachable, `c2detect` prints a clear note and continues with the rule findings only.
+- **Local-first.** Honors `COGNIS_AI_BACKEND` / `COGNIS_AI_ENDPOINT` / `COGNIS_AI_MODEL` / `COGNIS_AI_KEY` — designed for the [uncensored-fleet](https://github.com/cognis-digital/uncensored-fleet) and `cognis-code` local endpoints.
 
 <div align="right"><a href="#top">↑ back to top</a></div>
 
@@ -146,7 +254,7 @@ curl -fsSL https://raw.githubusercontent.com/cognis-digital/c2detect/main/instal
 - [`pwnreview`](https://github.com/cognis-digital/pwnreview) — Pentest report generator — YAML findings to CREST-grade PDF
 - [`crackq`](https://github.com/cognis-digital/crackq) — Self-hosted password cracking queue — multi-user hashcat with audit log
 
-**Explore the suite →** [🗂️ all 170+ tools](https://github.com/cognis-digital/cognis-neural-suite) · [⭐ awesome-cognis](https://github.com/cognis-digital/awesome-cognis) · [🔗 cognis-sources](https://github.com/cognis-digital/cognis-sources) · [🤖 uncensored-fleet](https://github.com/cognis-digital/uncensored-fleet) · [🧠 hermes](https://github.com/cognis-digital/hermes)
+**Explore the suite →** [🗂️ all 170+ tools](https://github.com/cognis-digital/cognis-neural-suite) · [⭐ awesome-cognis](https://github.com/cognis-digital/awesome-cognis) · [🔗 cognis-sources](https://github.com/cognis-digital/cognis-sources) · [🤖 uncensored-fleet](https://github.com/cognis-digital/uncensored-fleet) · [🧠 engram](https://github.com/cognis-digital/engram)
 
 <div align="right"><a href="#top">↑ back to top</a></div>
 

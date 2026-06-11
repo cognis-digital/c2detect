@@ -1,0 +1,35 @@
+{
+  "observations": [
+    {
+      "ip": "198.51.100.91",
+      "port": 443,
+      "beacon_interval": 60,
+      "jitter": 0.05,
+      "uri": "/aB3x",
+      "user_agent": "Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0)",
+      "note": "60s fixed-cadence beacon with near-zero jitter + checksum8 stager URI + CS default UA"
+    },
+    {
+      "ip": "203.0.113.55",
+      "port": 8888,
+      "uri": "/beacon",
+      "uri2": "/file/download",
+      "http_paths": ["/beacon", "/file/download"],
+      "note": "MITRE Caldera Sandcat default endpoints"
+    },
+    {
+      "ip": "192.0.2.77",
+      "port": 8443,
+      "beacon_interval": 3600,
+      "jitter": 0.10,
+      "note": "hourly low-jitter call-home — generic beaconing heuristic regardless of family"
+    },
+    {
+      "ip": "10.0.0.8",
+      "port": 8080,
+      "beacon_interval": 60,
+      "jitter": 0.90,
+      "note": "60s but 90% jitter — high jitter should NOT trip the low-jitter CS profile"
+    }
+  ]
+}

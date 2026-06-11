@@ -38,10 +38,15 @@ WEIGHTS: dict[str, int] = {
     "ja4": 44,        # full TLS client fingerprint — decisive on its own
     "jarm": 42,       # full TLS server fingerprint — decisive on its own
     "ja4s": 40,       # full TLS server-response fingerprint
+    "ja4x": 30,       # x509-derived JA4X cert fingerprint
     "cert_quirk": 28,
     "ja3": 24,
+    "ja3s": 22,       # TLS server-hello fingerprint
     "uri": 16,
+    "beacon": 22,     # periodic call-home cadence with low jitter (behavioral)
+    "uri_regex": 18,  # checksum/encoded URI pattern (behavioral)
     "http_banner": 12,
+    "user_agent": 10,
     "port": 6,
 }
 
@@ -69,7 +74,13 @@ _SARIF_LEVEL = {
 
 @dataclass(frozen=True)
 class Signature:
-    """A single C2 family fingerprint."""
+    """A single C2 family fingerprint.
+
+    All fields are *observational*: TLS fingerprints, default ports, documented
+    default URI paths/regexes, HTTP banners and cert quirks, plus a behavioral
+    beacon-cadence window. No field describes how to attack anything — these are
+    the out-of-the-box defaults a defender can spot.
+    """
 
     family: str
     aliases: tuple[str, ...] = ()
@@ -78,22 +89,35 @@ class Signature:
     references: tuple[str, ...] = ()
     ja4: tuple[str, ...] = ()
     ja4s: tuple[str, ...] = ()
+    ja4x: tuple[str, ...] = ()          # JA4X x509 cert fingerprints
     ja3: tuple[str, ...] = ()
+    ja3s: tuple[str, ...] = ()          # JA3S server-hello fingerprints
     jarm: tuple[str, ...] = ()
     ports: tuple[int, ...] = ()
     uris: tuple[str, ...] = ()          # substrings / paths
+    uri_regexes: tuple[str, ...] = ()   # regex patterns over URIs (checksum/encoded)
     http_banners: tuple[str, ...] = ()  # case-insensitive substrings
+    user_agents: tuple[str, ...] = ()   # default UA strings (substring match)
     cert_quirks: tuple[str, ...] = ()   # substrings searched in cert subject/issuer/serial
+    # Behavioral: (min_seconds, max_seconds) default beacon interval window.
+    beacon_interval: tuple[int, int] | None = None
+    # Max jitter fraction (0..1) a default profile typically stays within.
+    max_jitter: float = 0.0
 
     def indicator_classes(self) -> dict[str, tuple]:
         return {
             "ja4": self.ja4,
             "ja4s": self.ja4s,
+            "ja4x": self.ja4x,
             "ja3": self.ja3,
+            "ja3s": self.ja3s,
             "jarm": self.jarm,
             "uri": self.uris,
+            "uri_regex": self.uri_regexes,
             "http_banner": self.http_banners,
+            "user_agent": self.user_agents,
             "cert_quirk": self.cert_quirks,
+            "beacon": (("%d-%ds" % self.beacon_interval,) if self.beacon_interval else ()),
             "port": tuple(str(p) for p in self.ports),
         }
 
@@ -114,12 +138,20 @@ _DB: tuple[Signature, ...] = (
         jarm=("07d14d16d21d21d07c42d41d00041d24a458a375eef0c576d23a7bab9a9fb1",),
         ja3=("a0e9f5d64349fb13191bc781f81f42e1",),
         ja4s=("t130200_1301_a56c5b993250",),
+        ja3s=("e35df3e00ca4ef31d42b34bebaa2f86e",),
         ports=(50050, 443, 8080),
         uris=("/submit.php", "/__utm.gif", "/pixel.gif", "/ca", "/dpixel"),
+        # CS staging URIs are a 4-char path whose ASCII bytes sum to a multiple
+        # of 0x100 (the documented checksum8 stager check).
+        uri_regexes=(r"^/[A-Za-z0-9]{4}$",),
         http_banners=("Cobalt Strike", "BeaconData"),
+        user_agents=("Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0)",),
         # Infamous default malleable-cert: subject CN "Major Cobalt Strike",
         # serial 146473198.
         cert_quirks=("Major Cobalt Strike", "146473198", "8BB00EE"),
+        # Default Beacon sleep is 60s with 0% jitter out of the box.
+        beacon_interval=(55, 65),
+        max_jitter=0.10,
     ),
     Signature(
         family="Metasploit / Meterpreter",
@@ -141,9 +173,12 @@ _DB: tuple[Signature, ...] = (
         references=("FoxIO JARM db", "BishopFox Sliver"),
         jarm=("3fd21b20d00000021c43d21b21b43d41d6175c3641f5be07f64f5c1e76d31b",),
         ja4=("t13d190900_9dc949149365_97f8aa674fd9",),
+        ja4x=("000000000000_4f24da86fa62_e1e5a9e0 a0b1c2d3e4f5",),
         ports=(8888, 31337, 443),
         uris=("/oscp", "/php", "/jsp", "/admin/static", "/samples.html"),
         cert_quirks=("multiplayer", "Sliver"),
+        beacon_interval=(50, 70),
+        max_jitter=0.30,
     ),
     Signature(
         family="Covenant",
@@ -242,6 +277,88 @@ _DB: tuple[Signature, ...] = (
         ports=(80, 443),
         uris=("/register", "/task", "/result"),
         http_banners=("NimPlant",),
+        user_agents=("NimPlant",),
+        beacon_interval=(55, 65),
+        max_jitter=0.20,
+    ),
+    Signature(
+        family="Villain",
+        aliases=("villain", "hoaxshell"),
+        severity="medium",
+        description="Villain / HoaxShell HTTP(S) backdoor default session headers.",
+        references=("t3l3machus/Villain", "t3l3machus/hoaxshell"),
+        ports=(8888, 443, 80),
+        uris=("/9ha8gq", "/c/", "/i/"),
+        http_banners=("hoaxshell", "Villain"),
+        user_agents=("Mozilla/5.0 (Windows NT 10.0; Win64; x64) hoaxshell",),
+    ),
+    Signature(
+        family="Caldera (MITRE)",
+        aliases=("caldera", "mitre-caldera", "sandcat", "manx"),
+        severity="medium",
+        description="MITRE Caldera Sandcat/Manx agent default beacon endpoints.",
+        references=("mitre/caldera",),
+        ports=(8888, 8443, 7010, 7011, 7012),
+        uris=("/beacon", "/file/download", "/file/upload", "/wesh"),
+        http_banners=("Caldera",),
+        beacon_interval=(50, 70),
+        max_jitter=0.20,
+    ),
+    Signature(
+        family="Pupy RAT",
+        aliases=("pupy", "pupyrat"),
+        severity="high",
+        description="Pupy cross-platform RAT default obfsproxy/SSL transport.",
+        references=("n1nj4sec/pupy",),
+        ja3=("e7d705a3286e19ea42f587b344ee6865",),
+        ports=(443, 8443, 1234),
+        uris=("/pupy", "/init"),
+        cert_quirks=("pupy", "n1nj4sec"),
+    ),
+    Signature(
+        family="Koadic",
+        aliases=("koadic", "kodiak"),
+        severity="medium",
+        description="Koadic COM C2 (JScript/VBScript) default stager URIs.",
+        references=("zerosum0x0/koadic",),
+        ports=(9999, 443, 80),
+        uris=("/sodbcg", "/redandblack", "/qr"),
+        user_agents=("Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko",),
+    ),
+    Signature(
+        family="SILENTTRINITY",
+        aliases=("silenttrinity", "st", "stinger"),
+        severity="high",
+        description="SILENTTRINITY .NET/IronPython C2 default HTTP listener.",
+        references=("byt3bl33d3r/SILENTTRINITY",),
+        ports=(443, 8443, 80),
+        uris=("/index.jsp", "/login", "/static/main.css"),
+        http_banners=("SILENTTRINITY",),
+        beacon_interval=(55, 65),
+        max_jitter=0.30,
+    ),
+    Signature(
+        family="Godzilla WebShell",
+        aliases=("godzilla", "shiro"),
+        severity="high",
+        description="Godzilla webshell default AES-encrypted POST + cookie quirks.",
+        references=("BeichenDream/Godzilla",),
+        ports=(80, 443, 8080),
+        uris=("/shell.jsp", "/cmd.aspx", "/index.php"),
+        uri_regexes=(r"pass=[0-9a-f]{16}",),
+        cert_quirks=("godzilla",),
+    ),
+    Signature(
+        family="Generic Beaconing Heuristic",
+        aliases=("beacon-heuristic", "lowjitter"),
+        severity="low",
+        description="Heuristic: highly periodic call-home (low jitter, fixed "
+                    "interval) to a high port — textbook implant cadence "
+                    "regardless of family. Behavioral observation only.",
+        references=("Generic behavioral heuristic", "MITRE T1071/T1029"),
+        ports=(443, 8443, 8080, 4444, 50050, 8888),
+        beacon_interval=(5, 86400),
+        max_jitter=0.15,
     ),
     Signature(
         family="Generic Self-Signed C2 Heuristic",
@@ -272,19 +389,27 @@ class Observation:
     host: str = ""
     ja4: str = ""
     ja4s: str = ""
+    ja4x: str = ""
     ja3: str = ""
+    ja3s: str = ""
     jarm: str = ""
     port: int | None = None
     uris: list[str] = field(default_factory=list)
     http_banner: str = ""
+    user_agent: str = ""
     cert: str = ""   # combined cert subject/issuer/serial text
+    # Behavioral: observed mean beacon interval (seconds) + jitter fraction.
+    beacon_interval: float | None = None
+    jitter: float | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
             "host": self.host, "ja4": self.ja4, "ja4s": self.ja4s,
-            "ja3": self.ja3, "jarm": self.jarm, "port": self.port,
+            "ja4x": self.ja4x, "ja3": self.ja3, "ja3s": self.ja3s,
+            "jarm": self.jarm, "port": self.port,
             "uris": list(self.uris), "http_banner": self.http_banner,
-            "cert": self.cert,
+            "user_agent": self.user_agent, "cert": self.cert,
+            "beacon_interval": self.beacon_interval, "jitter": self.jitter,
         }
 
 
@@ -295,13 +420,19 @@ _FIELD_ALIASES: dict[str, tuple[str, ...]] = {
     "host": ("host", "ip", "ip_addr", "dest_ip", "server", "address", "addr"),
     "ja4": ("ja4",),
     "ja4s": ("ja4s",),
+    "ja4x": ("ja4x",),
     "ja3": ("ja3",),
+    "ja3s": ("ja3s",),
     "jarm": ("jarm",),
     "port": ("port", "dest_port", "dst_port", "server_port"),
     "http_banner": ("http_banner", "banner", "server_header", "server"),
+    "user_agent": ("user_agent", "useragent", "ua", "http_user_agent"),
     "cert": ("cert", "cert_cn", "certificate", "subject", "issuer", "cert_subject"),
 }
 _URI_ALIASES = ("uris", "uri", "http_paths", "paths", "url", "urls")
+_BEACON_ALIASES = ("beacon_interval", "interval", "sleep", "period", "cadence",
+                   "mean_interval", "beacon_sec")
+_JITTER_ALIASES = ("jitter", "jitter_frac", "jitter_pct", "variance")
 
 
 def observation_from_record(rec: dict[str, Any]) -> Observation:
@@ -342,6 +473,29 @@ def observation_from_record(rec: dict[str, Any]) -> Observation:
                 obs.uris.append(v)
             elif isinstance(v, (list, tuple)):
                 obs.uris.extend(str(x) for x in v if x)
+
+    # Behavioral fields.
+    for n in _BEACON_ALIASES:
+        if n in lower and lower[n] not in (None, ""):
+            try:
+                obs.beacon_interval = float(lower[n])
+                break
+            except (TypeError, ValueError):
+                m = re.findall(r"[\d.]+", str(lower[n]))
+                if m:
+                    obs.beacon_interval = float(m[0])
+                    break
+    for n in _JITTER_ALIASES:
+        if n in lower and lower[n] not in (None, ""):
+            try:
+                j = float(lower[n])
+            except (TypeError, ValueError):
+                m = re.findall(r"[\d.]+", str(lower[n]))
+                j = float(m[0]) if m else None
+            if j is not None:
+                # Accept either a fraction (0.1) or a percent (10) — normalize.
+                obs.jitter = j / 100.0 if j > 1.0 else j
+                break
     return obs
 
 
@@ -417,8 +571,8 @@ def _score_signature(obs: Observation, sig: Signature) -> Match | None:
 
     # Exact-ish fingerprint matches.
     for klass, observed in (
-        ("ja4", obs.ja4), ("ja4s", obs.ja4s),
-        ("ja3", obs.ja3), ("jarm", obs.jarm),
+        ("ja4", obs.ja4), ("ja4s", obs.ja4s), ("ja4x", obs.ja4x),
+        ("ja3", obs.ja3), ("ja3s", obs.ja3s), ("jarm", obs.jarm),
     ):
         if not observed:
             continue
@@ -438,12 +592,35 @@ def _score_signature(obs: Observation, sig: Signature) -> Match | None:
                 add("uri", u, t)
                 break
 
+    # URI regex (behavioral pattern) matches.
+    if sig.uri_regexes:
+        for u in obs.uris:
+            matched_pat = None
+            for pat in sig.uri_regexes:
+                try:
+                    if re.search(pat, u, re.IGNORECASE):
+                        matched_pat = pat
+                        break
+                except re.error:
+                    continue
+            if matched_pat:
+                add("uri_regex", u, matched_pat)
+                break
+
     # HTTP banner.
     if obs.http_banner:
         nb = _norm(obs.http_banner)
         for t in sig.http_banners:
             if _norm(t) in nb:
                 add("http_banner", obs.http_banner, t)
+                break
+
+    # User-Agent (default UA strings).
+    if obs.user_agent:
+        nua = _norm(obs.user_agent)
+        for t in sig.user_agents:
+            if _norm(t) in nua:
+                add("user_agent", obs.user_agent, t)
                 break
 
     # Cert quirks.
@@ -454,6 +631,22 @@ def _score_signature(obs: Observation, sig: Signature) -> Match | None:
                 add("cert_quirk", obs.cert, t)
                 break
 
+    # Behavioral beacon cadence: observed mean interval within the family's
+    # default window AND jitter at/under the family's documented ceiling.
+    if sig.beacon_interval is not None and obs.beacon_interval is not None:
+        lo, hi = sig.beacon_interval
+        if lo <= obs.beacon_interval <= hi:
+            jitter_ok = (
+                obs.jitter is None
+                or sig.max_jitter <= 0.0
+                or obs.jitter <= sig.max_jitter + 1e-9
+            )
+            if jitter_ok:
+                jdesc = "" if obs.jitter is None else f" j={obs.jitter:.2f}"
+                add("beacon",
+                    f"{obs.beacon_interval:g}s{jdesc}",
+                    f"{lo}-{hi}s")
+
     if not hits:
         return None
 
@@ -461,7 +654,7 @@ def _score_signature(obs: Observation, sig: Signature) -> Match | None:
     # Two or more *strong* indicators (ja4/jarm/ja4s/ja3/cert) reinforce.
     base = sum(weight_seen.values())
     strong = sum(
-        1 for k in ("ja4", "ja4s", "jarm", "ja3", "cert_quirk")
+        1 for k in ("ja4", "ja4s", "ja4x", "jarm", "ja3", "ja3s", "cert_quirk")
         if k in weight_seen
     )
     if strong >= 2:
@@ -510,8 +703,11 @@ def scan_observations(
 # ---------------------------------------------------------------------------
 # Free-text harvesting — pull indicators out of a blob of telemetry.
 # ---------------------------------------------------------------------------
-_KV_RE = re.compile(r"(?P<k>ja4s|ja4|ja3|jarm|port|host|banner|cert|uri)\s*[:=]\s*(?P<v>\S.*?)(?:\s{2,}|[,;]|$)",
-                    re.IGNORECASE)
+_KV_RE = re.compile(
+    r"(?P<k>ja4x|ja4s|ja4|ja3s|ja3|jarm|port|host|banner|user[_-]?agent|ua|"
+    r"cert|uri|beacon[_-]?interval|interval|sleep|jitter)"
+    r"\s*[:=]\s*(?P<v>\S.*?)(?:\s{2,}|[,;]|$)",
+    re.IGNORECASE)
 
 
 def observation_from_text(text: str, host: str = "") -> Observation:
@@ -523,14 +719,18 @@ def observation_from_text(text: str, host: str = "") -> Observation:
     obs = Observation(host=host)
     # Explicit key:value pairs first.
     for m in _KV_RE.finditer(text):
-        k = m.group("k").lower()
+        k = m.group("k").lower().replace("-", "_")
         v = m.group("v").strip().strip('"').strip("'")
         if k == "ja4":
             obs.ja4 = obs.ja4 or v.split()[0]
         elif k == "ja4s":
             obs.ja4s = obs.ja4s or v.split()[0]
+        elif k == "ja4x":
+            obs.ja4x = obs.ja4x or v
         elif k == "ja3":
             obs.ja3 = obs.ja3 or v.split()[0]
+        elif k == "ja3s":
+            obs.ja3s = obs.ja3s or v.split()[0]
         elif k == "jarm":
             obs.jarm = obs.jarm or v.split()[0]
         elif k == "port":
@@ -542,10 +742,21 @@ def observation_from_text(text: str, host: str = "") -> Observation:
             obs.host = v.split()[0]
         elif k == "banner":
             obs.http_banner = (obs.http_banner + " " + v).strip()
+        elif k in ("user_agent", "ua"):
+            obs.user_agent = (obs.user_agent + " " + v).strip()
         elif k == "cert":
             obs.cert = (obs.cert + " " + v).strip()
         elif k == "uri":
             obs.uris.append(v.split()[0])
+        elif k in ("beacon_interval", "interval", "sleep") and obs.beacon_interval is None:
+            mm = re.findall(r"[\d.]+", v)
+            if mm:
+                obs.beacon_interval = float(mm[0])
+        elif k == "jitter" and obs.jitter is None:
+            mm = re.findall(r"[\d.]+", v)
+            if mm:
+                j = float(mm[0])
+                obs.jitter = j / 100.0 if j > 1.0 else j
 
     # Free-floating fingerprints (only fill if not already set).
     if not obs.jarm:
@@ -721,5 +932,207 @@ def fails_gate(results: list[ScanResult], fail_on: str | None) -> bool:
     return False
 
 
+# ---------------------------------------------------------------------------
+# AI-assisted findings — merge an optional LLM pass into the rule results.
+# DEFAULT OFF. When the --ai flag is given and the backend is reachable, AI
+# findings are attached to the relevant ScanResult tagged source="ai". Rule
+# findings are always source="rule"; AI findings that duplicate a rule family
+# are dropped so the deterministic result is never altered when --ai is absent.
+# ---------------------------------------------------------------------------
+def _ai_finding_severity(item: dict[str, Any]) -> str:
+    sev = str(item.get("severity", "info")).strip().lower()
+    return sev if sev in SEVERITY_ORDER else "info"
+
+
+def merge_ai_findings(
+    result: "ScanResult",
+    ai_findings: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Dedupe AI findings against the rule matches already on ``result``.
+
+    Returns the kept AI findings (each annotated with source="ai" and a
+    ``candidate_novel`` flag). A finding is dropped when its title/evidence
+    clearly names a C2 family the rule engine already reported for this host —
+    the deterministic rule result stays authoritative.
+    """
+    rule_terms: set[str] = set()
+    for m in result.matches:
+        rule_terms.add(_norm(m.family))
+        for tok in re.split(r"[^a-z0-9]+", _norm(m.family)):
+            if len(tok) >= 4:
+                rule_terms.add(tok)
+
+    kept: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for f in ai_findings:
+        if not isinstance(f, dict):
+            continue
+        title = str(f.get("title", "")).strip()
+        ev = str(f.get("evidence", "")).strip()
+        key = _norm(title) + "|" + _norm(ev)[:80]
+        if key in seen:
+            continue
+        seen.add(key)
+        blob = _norm(title + " " + ev + " " + str(f.get("why", "")))
+        if any(t and t in blob for t in rule_terms):
+            # AI is re-stating a family the rules already caught — skip.
+            continue
+        out = dict(f)
+        out["source"] = "ai"
+        out["severity"] = _ai_finding_severity(f)
+        out["candidate_novel"] = bool(f.get("novel", False))
+        kept.append(out)
+    return kept
+
+
+def fails_gate_with_ai(
+    results: list["ScanResult"],
+    ai_by_index: dict[int, list[dict[str, Any]]] | None,
+    fail_on: str | None,
+) -> bool:
+    """Gate that also considers AI findings (used when --ai is active)."""
+    if fails_gate(results, fail_on):
+        return True
+    if not fail_on or not ai_by_index:
+        return False
+    floor = SEVERITY_ORDER.get(fail_on, 99)
+    for findings in ai_by_index.values():
+        for f in findings:
+            if SEVERITY_ORDER.get(_ai_finding_severity(f), 99) <= floor:
+                return True
+    return False
+
+
+# ---------------------------------------------------------------------------
+# shields.io endpoint badge
+# ---------------------------------------------------------------------------
+def to_badge(
+    results: list["ScanResult"],
+    ai_by_index: dict[int, list[dict[str, Any]]] | None = None,
+) -> dict[str, Any]:
+    """Render a shields.io *endpoint* JSON for a repo status badge.
+
+    Color/message reflect the worst severity observed. Green "clean" when
+    nothing matched. See https://shields.io/endpoint.
+    """
+    total = sum(r.count for r in results)
+    ai_total = sum(len(v) for v in (ai_by_index or {}).values())
+    worst = worst_severity(results)
+    if ai_by_index:
+        for findings in ai_by_index.values():
+            for f in findings:
+                s = _ai_finding_severity(f)
+                if worst is None or SEVERITY_ORDER.get(s, 99) < SEVERITY_ORDER.get(worst, 99):
+                    worst = s
+    color_map = {
+        "critical": "critical", "high": "red", "medium": "orange",
+        "low": "yellow", "info": "blue",
+    }
+    grand = total + ai_total
+    if grand == 0:
+        message, color = "clean", "brightgreen"
+    else:
+        sev = worst or "info"
+        message = f"{grand} finding{'s' if grand != 1 else ''} ({sev})"
+        color = color_map.get(sev, "lightgrey")
+    return {
+        "schemaVersion": 1,
+        "label": "c2detect",
+        "message": message,
+        "color": color,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Self-contained HTML report
+# ---------------------------------------------------------------------------
+def _esc(s: Any) -> str:
+    return (str(s).replace("&", "&amp;").replace("<", "&lt;")
+            .replace(">", "&gt;").replace('"', "&quot;"))
+
+
+_SEV_COLOR = {
+    "critical": "#b91c1c", "high": "#dc2626", "medium": "#d97706",
+    "low": "#ca8a04", "info": "#2563eb", "ai": "#7c3aed",
+}
+
+
+def to_html(
+    results: list["ScanResult"],
+    ai_by_index: dict[int, list[dict[str, Any]]] | None = None,
+) -> str:
+    """Render a clean, self-contained (no external assets) HTML report."""
+    ai_by_index = ai_by_index or {}
+    total = sum(r.count for r in results)
+    ai_total = sum(len(v) for v in ai_by_index.values())
+    worst = worst_severity(results) or "info"
+    rows: list[str] = []
+    for idx, res in enumerate(results):
+        host = _esc(res.observation.host or "(unnamed host)")
+        if res.count == 0 and not ai_by_index.get(idx):
+            continue
+        rows.append(f'<h3 class="host">{host}</h3>')
+        if res.matches:
+            rows.append('<table><thead><tr><th>Conf</th><th>Severity</th>'
+                        '<th>Family</th><th>Indicators</th><th>Source</th>'
+                        '</tr></thead><tbody>')
+            for m in res.matches:
+                ind = _esc(", ".join(f"{i.klass}" for i in m.indicators))
+                col = _SEV_COLOR.get(m.severity, "#64748b")
+                rows.append(
+                    f'<tr><td>{m.confidence}%</td>'
+                    f'<td><span class="pill" style="background:{col}">{_esc(m.severity)}</span></td>'
+                    f'<td>{_esc(m.family)}</td><td class="ind">{ind}</td>'
+                    f'<td><span class="src">rule</span></td></tr>')
+            rows.append('</tbody></table>')
+        for f in ai_by_index.get(idx, []):
+            col = _SEV_COLOR["ai"]
+            novel = ' <span class="novel">NOVEL?</span>' if f.get("candidate_novel") else ""
+            rows.append(
+                f'<div class="ai"><span class="pill" style="background:{col}">ai · '
+                f'{_esc(f.get("severity","info"))}</span> <b>{_esc(f.get("title",""))}</b>{novel}'
+                f'<div class="why">{_esc(f.get("why",""))}</div>'
+                f'<pre>{_esc(f.get("evidence",""))}</pre></div>')
+    body = "\n".join(rows) or "<p class='clean'>No C2 indicators found. ✓</p>"
+    headcol = _SEV_COLOR.get(worst, "#16a34a") if total + ai_total else "#16a34a"
+    return f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>c2detect report</title>
+<style>
+:root{{color-scheme:light dark}}
+body{{font:14px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+margin:0;background:#0f172a;color:#e2e8f0}}
+.wrap{{max-width:980px;margin:0 auto;padding:24px}}
+header{{border-left:6px solid {headcol};padding:12px 18px;background:#1e293b;border-radius:8px}}
+h1{{margin:0 0 4px;font-size:22px}} .sub{{color:#94a3b8;font-size:13px}}
+.summary{{display:flex;gap:16px;margin:18px 0}}
+.card{{background:#1e293b;border-radius:8px;padding:12px 18px;flex:1;text-align:center}}
+.card b{{display:block;font-size:26px}}
+h3.host{{margin:22px 0 6px;font-size:16px;color:#cbd5e1}}
+table{{width:100%;border-collapse:collapse;background:#1e293b;border-radius:8px;overflow:hidden}}
+th,td{{text-align:left;padding:8px 12px;border-bottom:1px solid #334155}}
+th{{background:#334155;font-size:12px;text-transform:uppercase;letter-spacing:.04em}}
+.pill{{color:#fff;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}}
+.ind{{color:#94a3b8;font-size:12px}} .src{{color:#64748b;font-size:12px}}
+.ai{{background:#1e1b4b;border:1px solid #4338ca;border-radius:8px;padding:10px 14px;margin:8px 0}}
+.ai pre{{white-space:pre-wrap;background:#0f172a;padding:8px;border-radius:6px;font-size:12px;overflow:auto}}
+.why{{color:#c7d2fe;margin:6px 0}} .novel{{background:#7c3aed;color:#fff;padding:1px 6px;border-radius:4px;font-size:11px}}
+.clean{{color:#4ade80;font-size:16px}}
+footer{{color:#64748b;font-size:12px;margin-top:28px;text-align:center}}
+</style></head><body><div class="wrap">
+<header><h1>c2detect — C2 fingerprint report</h1>
+<div class="sub">{_esc(TOOL_NAME)} {_esc(TOOL_VERSION)} · defensive triage · no network</div></header>
+<div class="summary">
+<div class="card"><b>{len(results)}</b>observations</div>
+<div class="card"><b>{total}</b>rule findings</div>
+<div class="card"><b>{ai_total}</b>ai findings</div>
+<div class="card"><b style="color:{headcol}">{_esc(worst if total+ai_total else 'clean')}</b>worst severity</div>
+</div>
+{body}
+<footer>Generated by <a style="color:#818cf8" href="https://github.com/cognis-digital/c2detect">c2detect</a> · Cognis Neural Suite</footer>
+</div></body></html>"""
+
+
 TOOL_NAME = "c2detect"
-TOOL_VERSION = "1.0.0"
+TOOL_VERSION = "1.1.0"
