@@ -1,20 +1,28 @@
-[
-  {
-    "ip": "203.0.113.50",
-    "port": 443,
-    "jarm": "2ad2ad0002ad2ad0002ad2ad2ad2ad9c0d6f1e9bcb5b8b8d8f8b8c8f8e8d8c",
-    "source": "sliver"
-  },
-  {
-    "ip": "203.0.113.51",
-    "port": 443,
-    "jarm": "3fd3fd16d29d3fd3fd42d43d00041d2c3e3f3e3d3c3b3a3938373635343332",
-    "source": "brute_ratel"
-  },
-  {
-    "ip": "203.0.113.52",
-    "port": 443,
-    "jarm": "29d29d20d29d29d21c42d43d000000ec0c8b6f5cd5d5b5e5f5b5a5d5c5e5f5",
-    "source": "mythic"
-  }
-]
+{
+  "observations": [
+    {
+      "ip": "203.0.113.50",
+      "port": 443,
+      "jarm": "3fd21b20d00000021c43d21b21b43d41d6175c3641f5be07f64f5c1e76d31b",
+      "uri": "/oscp",
+      "cert_cn": "multiplayer",
+      "source": "sliver"
+    },
+    {
+      "ip": "203.0.113.51",
+      "port": 8443,
+      "jarm": "2ad2ad16d2ad2ad22c2ad2ad2ad2ad6bb8e6b6f6e62b62a4d0f5dd8c0a7c9c",
+      "http_paths": ["/admin/menu", "/console"],
+      "cert_cn": "Brute Ratel",
+      "source": "brute_ratel"
+    },
+    {
+      "ip": "203.0.113.52",
+      "port": 443,
+      "jarm": "2ad2ad0002ad2ad22c42d42d000000ad9bf51cc3f5a1e29eecb8d9d5e0b8b8",
+      "http_paths": ["/agent_message"],
+      "http_banner": "Mythic",
+      "source": "mythic"
+    }
+  ]
+}

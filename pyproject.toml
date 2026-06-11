@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cognis-c2detect"
-version = "0.1.0"
+version = "1.0.0"
 description = "C2 server fingerprinter — Cobalt Strike, Sliver, Mythic, Havoc detection"
 authors = [{name = "Cognis Digital", email = "suite@cognis.digital"}]
 license = {text = "LicenseRef-COCL-1.0"}
