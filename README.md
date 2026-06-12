@@ -16,7 +16,7 @@
 </div>
 
 ```bash
-pip install cognis-c2detect
+pip install "git+https://github.com/cognis-digital/c2detect.git"
 c2detect scan .            # → prioritized findings in seconds
 ```
 
@@ -51,7 +51,7 @@ C2 server fingerprinter — Cobalt Strike, Sliver, Mythic, Havoc, Brute Ratel �
 ## Quick start
 
 ```bash
-pip install cognis-c2detect
+pip install "git+https://github.com/cognis-digital/c2detect.git"
 c2detect --version
 c2detect scan .                       # scan current project
 c2detect scan . --format json         # machine-readable
