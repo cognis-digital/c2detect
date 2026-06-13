@@ -16,7 +16,7 @@
 </div>
 
 ```bash
-pip install cognis-c2detect
+pip install "git+https://github.com/cognis-digital/c2detect.git"
 c2detect scan .            # → prioritized findings in seconds
 ```
 
@@ -51,7 +51,7 @@ C2 server fingerprinter — Cobalt Strike, Sliver, Mythic, Havoc, Brute Ratel �
 ## Quick start
 
 ```bash
-pip install cognis-c2detect
+pip install "git+https://github.com/cognis-digital/c2detect.git"
 c2detect --version
 c2detect scan .                       # scan current project
 c2detect scan . --format json         # machine-readable
@@ -228,6 +228,16 @@ Pipes into your stack: **SARIF** for code-scanning, **JSON** for anything, an **
 <div align="right"><a href="#top">↑ back to top</a></div>
 
 <a name="install-anywhere"></a>
+<!-- cognis:domains:start -->
+## Domains
+
+**Primary domain:** Cyber & Security  ·  **JTF MERIDIAN division:** NULLBYTE · SPECTER
+
+**Topics:** `cognis` `security` `infosec` `cybersecurity` `blue-team`
+
+Part of the **Cognis Neural Suite** — 300+ source-available tools organized across 12 domains under the JTF MERIDIAN command structure. See the [suite on GitHub](https://github.com/cognis-digital) and [jtf-meridian](https://github.com/cognis-digital/jtf-meridian) for how the pieces fit together.
+<!-- cognis:domains:end -->
+
 ## Install — every way, every platform
 
 ```bash
