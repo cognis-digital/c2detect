@@ -20,6 +20,35 @@ pip install cognis-c2detect
 c2detect scan .            # → prioritized findings in seconds
 ```
 
+## Usage — step by step
+
+`c2detect` is defensive C2-infrastructure triage: it scans telemetry/observation records against a bundled signature DB and flags beaconing, suspicious TLS fingerprints, and staging URIs. No network, no active capability.
+
+1. **Install** (Python 3.10+):
+   ```bash
+   pip install -e .            # or: pipx install c2detect
+   ```
+2. **Scan observation files / telemetry text / a directory / stdin**:
+   ```bash
+   c2detect scan telemetry.json
+   cat telemetry.log | c2detect scan
+   ```
+3. **Match explicit indicators** on the command line (no file needed):
+   ```bash
+   c2detect match --ja4 t13d1516h2_8daaf6152771_b186095e22b6 --port 443 --beacon-interval 60 --jitter 0.1
+   c2detect db        # list the bundled C2 signature database
+   ```
+4. **Read the output** in JSON / SARIF / HTML / badge (e.g. for code scanning):
+   ```bash
+   c2detect scan telemetry.json --format sarif > c2.sarif
+   c2detect scan telemetry.json --format json | jq '.findings'
+   ```
+5. **Gate CI** with `--fail-on <severity>` (exit non-zero at/above that severity). Optional `--ai` adds an opt-in Cognis-fleet LLM pass that degrades to rules if no backend is configured:
+   ```yaml
+   - run: pip install -e . && c2detect scan telemetry.json --fail-on high
+   ```
+
+
 ## Contents
 
 - [Why c2detect?](#why) · [Features](#features) · [Quick start](#quick-start) · [Example](#example) · [Detection depth](#detection-depth) · [GitHub Action](#github-action) · [Status badge](#status-badge) · [HTML report](#html-report) · [AI mode](#ai-mode) · [Architecture](#architecture) · [AI stack](#ai-stack) · [How it compares](#how-it-compares) · [Integrations](#integrations) · [Install anywhere](#install-anywhere) · [Related](#related) · [Contributing](#contributing)
