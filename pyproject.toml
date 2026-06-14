@@ -36,3 +36,6 @@ c2detect = "c2detect.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["c2detect"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
