@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cognis-c2detect"
-version = "1.1.0"
+version = "1.1.1"
 description = "C2 server fingerprinter — Cobalt Strike, Sliver, Mythic, Havoc detection"
 authors = [{name = "Cognis Digital", email = "suite@cognis.digital"}]
 license = {text = "LicenseRef-COCL-1.0"}
@@ -21,6 +21,7 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
+connect = ["cognis-connect @ git+https://github.com/cognis-digital/cognis-connect.git"]
 mcp = ["mcp>=1.0"]
 web = ["fastapi>=0.110", "uvicorn>=0.27"]
 dev = ["pytest>=8.0"]
@@ -30,6 +31,7 @@ Homepage = "https://cognis.digital"
 Repository = "https://github.com/cognis-digital/c2detect"
 
 [project.scripts]
+"c2detect-emit" = "c2detect.connect:emit_main"
 c2detect = "c2detect.cli:main"
 
 [tool.hatch.build.targets.wheel]
