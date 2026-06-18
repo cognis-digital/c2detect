@@ -5,7 +5,7 @@ Reads JSON findings on stdin and POSTs them to a URL (SIEM/Slack/Jira bridge).
 Usage:  <tool> scan . --format json | python integrations/webhook.py --url URL
 """
 from __future__ import annotations
-import argparse, json, sys, urllib.request
+import argparse, sys, urllib.request
 
 def main() -> int:
     ap = argparse.ArgumentParser()
