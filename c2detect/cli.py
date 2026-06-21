@@ -227,6 +227,13 @@ def _build_parser() -> argparse.ArgumentParser:
     p_db = sub.add_parser("db", help="List the bundled C2 signature database.")
     p_db.add_argument("--format", choices=("table", "json"), default="table")
 
+    # rules — emit deployable detection rules from the signature DB.
+    p_rules = sub.add_parser(
+        "rules",
+        help="Generate Sigma / Suricata detection rules from the signature DB.")
+    p_rules.add_argument("--format", choices=("sigma", "suricata"), default="sigma")
+    p_rules.add_argument("-o", "--output", help="write to file instead of stdout")
+
     # mcp — run as an MCP server.
     sub.add_parser("mcp", help="Run the MCP server (stdio JSON-RPC).")
 
@@ -375,6 +382,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             ))
         else:
             print(_render_db_table(rows))
+        return 0
+
+    if args.command == "rules":
+        from .rules import generate
+        text = generate(args.format)
+        if args.output:
+            with open(args.output, "w", encoding="utf-8") as fh:
+                fh.write(text if text.endswith("\n") else text + "\n")
+            print(f"wrote {args.format} rules to {args.output}", file=sys.stderr)
+        else:
+            print(text)
         return 0
 
     if args.command == "mcp":

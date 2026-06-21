@@ -68,6 +68,7 @@ C2 server fingerprinter — Cobalt Strike, Sliver, Mythic, Havoc, Brute Ratel �
 - ✅ **20 C2 families** fingerprinted — Cobalt Strike, Metasploit, Sliver, Covenant, Mythic, Brute Ratel, Empire, Havoc, PoshC2, Merlin, Deimos, NimPlant, Villain, Caldera, Pupy, Koadic, SILENTTRINITY, Godzilla + generic self-signed/beaconing heuristics
 - ✅ **TLS + behavioral indicators** — JA4 / JA4S / JA4X / JA3 / JA3S / JARM, plus **beacon-interval/jitter cadence**, checksum/encoded **URI regexes**, default **User-Agents**, cert quirks and ports
 - ✅ Output: **table · JSON · SARIF · HTML report · shields.io badge**
+- ✅ **Deploy as detection rules** — generate ready-to-ship **Sigma** (SIEM) and **Suricata** (IDS/IPS) rules for every C2 family straight from the signature DB: `c2detect rules --format suricata`
 - ✅ **Reusable GitHub Action** (`uses: cognis-digital/c2detect@main`) — comments findings on PRs, fails CI on `--fail-on`
 - ✅ **Opt-in AI mode** (`--ai`) over your local Cognis fleet — **off by default**, deterministic without it
 - ✅ Runs on Linux/macOS/Windows · Docker · devcontainer · MCP server
@@ -86,6 +87,37 @@ c2detect scan .                       # scan current project
 c2detect scan . --format json         # machine-readable
 c2detect scan . --fail-on high        # CI gate (non-zero exit)
 ```
+
+<div align="right"><a href="#top">↑ back to top</a></div>
+
+<a name="detection-rules"></a>
+## Deploy as detection rules
+
+Don't just scan — **ship the intelligence to your stack.** `c2detect rules`
+turns the bundled signature DB into deployable detection content for every C2
+family, generated from the same high-confidence TLS fingerprints and documented
+defaults the scanner uses.
+
+```bash
+# Sigma rules for your SIEM (one rule per C2 family, TLS-fingerprint keyed)
+c2detect rules --format sigma -o c2detect.sigma.yml
+
+# Suricata IDS/IPS rules (JA3/JA4 hash + HTTP URI/User-Agent matches)
+c2detect rules --format suricata -o c2detect.rules
+```
+
+Example Suricata output:
+
+```
+alert tls any any -> any any (msg:"C2DETECT Cobalt Strike default JA3"; \
+  ja3.hash; content:"a0e9f5d64349fb13191bc781f81f42e1"; \
+  classtype:trojan-activity; sid:9200000; rev:1; \
+  metadata:c2_family Cobalt_Strike, source c2detect, confidence high;)
+```
+
+SIDs are deterministic in the private `9.2M` range so they won't clash with
+ET/Talos rule sets. Sigma rules carry stable ids, `attack.command_and_control`
+tags, and per-family `c2detect.family.*` tags. Tune/threshold before production.
 
 <div align="right"><a href="#top">↑ back to top</a></div>
 

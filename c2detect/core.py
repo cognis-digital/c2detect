@@ -822,6 +822,16 @@ def load_records(text: str) -> list[dict[str, Any]] | None:
     return None
 
 
+def signatures() -> tuple[Signature, ...]:
+    """Return the bundled signature database (full Signature objects).
+
+    Public accessor so downstream emitters (e.g. detection-rule generation in
+    :mod:`c2detect.rules`) can consume the raw indicators rather than the
+    summarized inventory produced by :func:`list_signatures`.
+    """
+    return _DB
+
+
 def list_signatures(db: Iterable[Signature] | None = None) -> list[dict[str, Any]]:
     """Inventory of the bundled DB for the ``db`` subcommand."""
     sigs = tuple(db) if db is not None else _DB
@@ -1135,4 +1145,4 @@ footer{{color:#64748b;font-size:12px;margin-top:28px;text-align:center}}
 
 
 TOOL_NAME = "c2detect"
-TOOL_VERSION = "1.1.0"
+TOOL_VERSION = "1.2.0"

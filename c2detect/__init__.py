@@ -29,11 +29,13 @@ from .core import (
     scan_observation,
     scan_observations,
     scan_text,
+    signatures,
     to_badge,
     to_html,
     to_sarif,
     worst_severity,
 )
+from .rules import to_sigma, to_suricata, generate
 
 __version__ = TOOL_VERSION
 
@@ -61,4 +63,8 @@ __all__ = [
     "fails_gate",
     "fails_gate_with_ai",
     "merge_ai_findings",
+    "signatures",
+    "to_sigma",
+    "to_suricata",
+    "generate",
 ]
