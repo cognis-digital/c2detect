@@ -349,6 +349,24 @@ _DB: tuple[Signature, ...] = (
         cert_quirks=("godzilla",),
     ),
     Signature(
+        family="AdaptixC2",
+        aliases=("adaptix", "adaptixc2"),
+        severity="high",
+        description="AdaptixC2 (Go teamserver / C++ Qt client) — fast-growing "
+                    "2025-2026 open-source C2. Default teamserver/beacon listener "
+                    "exposes branded HTTP headers and a fixed error page.",
+        references=("Censys AdaptixC2 (Jun 2026)", "hunt.io AdaptixC2 hunting"),
+        # Censys/hunt.io: 4321 teamserver, 43211 beacon listener, 6869/53362 seen.
+        ports=(4321, 43211, 6869, 53362),
+        uris=("/endpoint", "/endpoint/login", "/endpoint/connect"),
+        # Strong: branded Server / version headers + the verbatim 404 body string.
+        http_banners=("Server: AdaptixC2", "Adaptix-Version", "AdaptixC2",
+                      "You need to enter the correct connection details."),
+        # Default self-signed cert ships the OpenSSL placeholder subject (weak on
+        # its own; corroborating, not decisive).
+        cert_quirks=("Internet Widgits Pty Ltd",),
+    ),
+    Signature(
         family="Generic Beaconing Heuristic",
         aliases=("beacon-heuristic", "lowjitter"),
         severity="low",
@@ -1145,4 +1163,4 @@ footer{{color:#64748b;font-size:12px;margin-top:28px;text-align:center}}
 
 
 TOOL_NAME = "c2detect"
-TOOL_VERSION = "1.2.0"
+TOOL_VERSION = "1.3.0"

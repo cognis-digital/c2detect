@@ -68,6 +68,21 @@ class TestDeepDetection(unittest.TestCase):
         klasses = {i.klass for m in res.matches for i in m.indicators}
         self.assertIn("user_agent", klasses)
 
+    def test_adaptixc2_branded_header_matches(self):
+        # AdaptixC2 ships a branded Server header + default endpoint path.
+        res = scan_observation(
+            Observation(http_banner="Server: AdaptixC2\nAdaptix-Version: v1.2",
+                        port=4321, uris=["/endpoint/login"]),
+            threshold=1)
+        self.assertEqual(res.top.family, "AdaptixC2")
+
+    def test_adaptixc2_404_body_matches(self):
+        res = scan_observation(
+            Observation(http_banner="You need to enter the correct connection details.",
+                        port=43211),
+            threshold=1)
+        self.assertIn("AdaptixC2", {m.family for m in res.matches})
+
 
 # --------------------------------------------------------------------------- #
 # Badge + HTML reporters

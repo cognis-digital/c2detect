@@ -65,7 +65,7 @@ C2 server fingerprinter — Cobalt Strike, Sliver, Mythic, Havoc, Brute Ratel �
 <a name="features"></a>
 ## Features
 
-- ✅ **20 C2 families** fingerprinted — Cobalt Strike, Metasploit, Sliver, Covenant, Mythic, Brute Ratel, Empire, Havoc, PoshC2, Merlin, Deimos, NimPlant, Villain, Caldera, Pupy, Koadic, SILENTTRINITY, Godzilla + generic self-signed/beaconing heuristics
+- ✅ **21 C2 families** fingerprinted — **AdaptixC2** `new`, Cobalt Strike, Metasploit, Sliver, Covenant, Mythic, Brute Ratel, Empire, Havoc, PoshC2, Merlin, Deimos, NimPlant, Villain, Caldera, Pupy, Koadic, SILENTTRINITY, Godzilla + generic self-signed/beaconing heuristics
 - ✅ **TLS + behavioral indicators** — JA4 / JA4S / JA4X / JA3 / JA3S / JARM, plus **beacon-interval/jitter cadence**, checksum/encoded **URI regexes**, default **User-Agents**, cert quirks and ports
 - ✅ Output: **table · JSON · SARIF · HTML report · shields.io badge**
 - ✅ **Deploy as detection rules** — generate ready-to-ship **Sigma** (SIEM) and **Suricata** (IDS/IPS) rules for every C2 family straight from the signature DB: `c2detect rules --format suricata`
@@ -137,7 +137,7 @@ $ c2detect scan .
 <a name="detection-depth"></a>
 ## Detection depth
 
-`c2detect` scores every observation against a bundled DB of **20 C2 families**.
+`c2detect` scores every observation against a bundled DB of **21 C2 families**.
 Each family is a blend of *observational* indicators — nothing describes an
 attack, only the out-of-the-box defaults a defender can spot:
 
