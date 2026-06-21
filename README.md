@@ -11,7 +11,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/cognis-c2detect.svg?color=6b46c1)](https://pypi.org/project/cognis-c2detect/) [![CI](https://github.com/cognis-digital/c2detect/actions/workflows/ci.yml/badge.svg)](https://github.com/cognis-digital/c2detect/actions) [![License: COCL 1.0](https://img.shields.io/badge/License-COCL%201.0-2b6cb0.svg)](LICENSE) [![Suite](https://img.shields.io/badge/Cognis-Neural%20Suite-6b46c1.svg)](https://github.com/cognis-digital)
 
-*Red Team / Offensive — adversary tooling for authorized engagements.*
+*Blue Team / Defensive — detect known C2 infrastructure from telemetry. No network, no active capability.*
 
 </div>
 
