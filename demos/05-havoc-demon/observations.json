@@ -1,0 +1,12 @@
+[
+  {
+    "ip": "203.0.113.77",
+    "port": 40056,
+    "jarm": "29d29d00029d29d21c29d29d29d29dca5d23a7bab9a9fb1e6b6f6e62b62a4d",
+    "http_banner": "Server: Havoc",
+    "uris": [
+      "/demon",
+      "/Havoc/"
+    ]
+  }
+]

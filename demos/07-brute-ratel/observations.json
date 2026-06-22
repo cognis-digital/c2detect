@@ -1,0 +1,12 @@
+[
+  {
+    "ip": "198.51.100.200",
+    "port": 8443,
+    "jarm": "2ad2ad16d2ad2ad22c2ad2ad2ad2ad6bb8e6b6f6e62b62a4d0f5dd8c0a7c9c",
+    "ja3": "72a589da586844d7f0818ce684948eea",
+    "uris": [
+      "/admin/menu",
+      "/api/v1/get"
+    ]
+  }
+]

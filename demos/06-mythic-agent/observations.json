@@ -1,0 +1,12 @@
+[
+  {
+    "ip": "192.0.2.55",
+    "port": 7443,
+    "jarm": "2ad2ad0002ad2ad22c42d42d000000ad9bf51cc3f5a1e29eecb8d9d5e0b8b8",
+    "http_banner": "Mythic",
+    "uris": [
+      "/agent_message",
+      "/new/agent_message"
+    ]
+  }
+]

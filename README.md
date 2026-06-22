@@ -150,8 +150,27 @@ attack, only the out-of-the-box defaults a defender can spot:
 | **Network** | default listener ports (weak, corroborating only) |
 
 Confidence (0–100) is a weighted blend; two or more *strong* indicators earn a
-corroboration bonus. Tune the floor with `--threshold`. See
-[`demos/03-behavioral`](demos/03-behavioral) for the cadence/jitter heuristics.
+corroboration bonus. Tune the floor with `--threshold`.
+
+### Worked demos — `c2detect scan demos/<name>/observations.json`
+
+Fifteen self-contained, real-use-case scenarios (each with a `SCENARIO.md`),
+grounded in the documented defaults so they genuinely fire:
+
+| Demo | Scenario |
+|------|----------|
+| `04-sliver-mtls` | Sliver implant over mTLS (JARM + JA4 + beacon cadence) |
+| `05-havoc-demon` | Havoc "Demon" agent (`Havoc` banner + `/demon`) |
+| `06-mythic-agent` | Mythic C2 (`/agent_message`) |
+| `07-brute-ratel` | Brute Ratel C4 (JARM + JA3) |
+| `08-adaptixc2-teamserver` | **AdaptixC2** teamserver — branded `Server: AdaptixC2` header (2025-26) |
+| `09-metasploit-meterpreter` | reverse_https Meterpreter (`/INITM`) |
+| `10-empire-windows` | PowerShell Empire (spoofed IIS banner) |
+| `11-multi-framework-incident` | **IR:** one intrusion staging CS + Sliver + Havoc + AdaptixC2 — all four attributed |
+| `12-threat-hunt-jarm-sweep` | **Threat hunt:** a JARM export where 2 of 5 egress IPs are C2, hiding among benign CDNs |
+
+Plus the original `01-*`/`02-*`/`03-*` basics, mixed-frameworks, behavioral, and
+benign-baseline (false-positive) scenarios.
 
 <div align="right"><a href="#top">↑ back to top</a></div>
 

@@ -1,0 +1,12 @@
+[
+  {
+    "ip": "192.0.2.99",
+    "port": 4444,
+    "jarm": "07d14d16d21d21d00042d43d000000aa99ce74e2c6d013c745aa52b5cc042d",
+    "ja3": "c12f54a3f91dc7bafd92cb59fe009a35",
+    "uris": [
+      "/INITM",
+      "/CONN_"
+    ]
+  }
+]

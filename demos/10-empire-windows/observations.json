@@ -1,0 +1,12 @@
+[
+  {
+    "ip": "198.51.100.61",
+    "port": 8080,
+    "ja3": "4d7a28d6f2263ed61de88ca66eb011e3",
+    "http_banner": "Microsoft-IIS/7.5",
+    "uris": [
+      "/admin/get.php",
+      "/news.php"
+    ]
+  }
+]

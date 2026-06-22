@@ -1,0 +1,39 @@
+[
+  {
+    "ip": "10.20.0.10",
+    "port": 443,
+    "jarm": "07d14d16d21d21d07c42d41d00041d24a458a375eef0c576d23a7bab9a9fb1",
+    "ja3": "a0e9f5d64349fb13191bc781f81f42e1",
+    "uris": [
+      "/submit.php"
+    ],
+    "beacon_interval": 60,
+    "jitter": 0.0
+  },
+  {
+    "ip": "10.20.0.11",
+    "port": 8888,
+    "jarm": "3fd21b20d00000021c43d21b21b43d41d6175c3641f5be07f64f5c1e76d31b",
+    "ja4": "t13d190900_9dc949149365_97f8aa674fd9"
+  },
+  {
+    "ip": "10.20.0.12",
+    "port": 40056,
+    "jarm": "29d29d00029d29d21c29d29d29d29dca5d23a7bab9a9fb1e6b6f6e62b62a4d",
+    "http_banner": "Havoc",
+    "uris": [
+      "/demon",
+      "/Havoc/"
+    ]
+  },
+  {
+    "ip": "10.20.0.13",
+    "port": 4321,
+    "http_banner": "Server: AdaptixC2\nAdaptix-Version: v1.2",
+    "uris": [
+      "/endpoint/login",
+      "/endpoint"
+    ],
+    "cert": "O=Internet Widgits Pty Ltd"
+  }
+]

@@ -1,0 +1,13 @@
+[
+  {
+    "ip": "203.0.113.150",
+    "port": 4321,
+    "http_banner": "Server: AdaptixC2\nAdaptix-Version: v1.2\nYou need to enter the correct connection details.",
+    "uris": [
+      "/endpoint/login",
+      "/endpoint",
+      "/endpoint/connect"
+    ],
+    "cert": "C=AU, ST=Some-State, O=Internet Widgits Pty Ltd"
+  }
+]
