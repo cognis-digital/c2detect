@@ -36,6 +36,16 @@ from .core import (
     worst_severity,
 )
 from .rules import to_sigma, to_suricata, generate
+from .correlate import (
+    Campaign,
+    HostNode,
+    SharedPivot,
+    correlate,
+    correlate_observations,
+    PIVOT_WEIGHTS,
+    DEFAULT_EDGE_FLOOR,
+    DEFAULT_CAMPAIGN_THRESHOLD,
+)
 
 __version__ = TOOL_VERSION
 
@@ -67,4 +77,12 @@ __all__ = [
     "to_sigma",
     "to_suricata",
     "generate",
+    "Campaign",
+    "HostNode",
+    "SharedPivot",
+    "correlate",
+    "correlate_observations",
+    "PIVOT_WEIGHTS",
+    "DEFAULT_EDGE_FLOOR",
+    "DEFAULT_CAMPAIGN_THRESHOLD",
 ]

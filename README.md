@@ -38,6 +38,10 @@ c2detect scan .            # → prioritized findings in seconds
    c2detect match --ja4 t13d1516h2_8daaf6152771_b186095e22b6 --port 443 --beacon-interval 60 --jitter 0.1
    c2detect db        # list the bundled C2 signature database
    ```
+   Or **correlate a batch** to cluster hosts that share C2 infrastructure into campaigns (see [Campaign correlation](#correlate)):
+   ```bash
+   c2detect correlate telemetry.json          # which hosts are one operator's estate, and why
+   ```
    Add `--feeds` to any `scan`/`match` to cross-reference host IPs / JA3s against the live [abuse.ch](https://abuse.ch) Feodo-C2 + SSLBL threat-intel feeds (cached, offline-capable — see [Live threat-intel feeds](#live-threat-intel-feeds-edge--air-gap-deployable)).
 4. **Read the output** in JSON / SARIF / HTML / badge (e.g. for code scanning):
    ```bash
@@ -52,7 +56,7 @@ c2detect scan .            # → prioritized findings in seconds
 
 ## Contents
 
-- [Why c2detect?](#why) · [Features](#features) · [Quick start](#quick-start) · [Example](#example) · [Detection depth](#detection-depth) · [GitHub Action](#github-action) · [Status badge](#status-badge) · [HTML report](#html-report) · [AI mode](#ai-mode) · [Architecture](#architecture) · [AI stack](#ai-stack) · [How it compares](#how-it-compares) · [Integrations](#integrations) · [Install anywhere](#install-anywhere) · [Related](#related) · [Contributing](#contributing)
+- [Why c2detect?](#why) · [Features](#features) · [Quick start](#quick-start) · [Example](#example) · [Detection depth](#detection-depth) · [Campaign correlation](#correlate) · [GitHub Action](#github-action) · [Status badge](#status-badge) · [HTML report](#html-report) · [AI mode](#ai-mode) · [Architecture](#architecture) · [AI stack](#ai-stack) · [How it compares](#how-it-compares) · [Integrations](#integrations) · [Install anywhere](#install-anywhere) · [Related](#related) · [Contributing](#contributing)
 
 <a name="why"></a>
 ## Why c2detect?
@@ -169,9 +173,55 @@ grounded in the documented defaults so they genuinely fire:
 | `10-empire-windows` | PowerShell Empire (spoofed IIS banner) |
 | `11-multi-framework-incident` | **IR:** one intrusion staging CS + Sliver + Havoc + AdaptixC2 — all four attributed |
 | `12-threat-hunt-jarm-sweep` | **Threat hunt:** a JARM export where 2 of 5 egress IPs are C2, hiding among benign CDNs |
+| `14-campaign-correlation` | **Correlation:** `c2detect correlate` clusters 6 hosts into 2 shared-infrastructure campaigns + 1 isolated benign host |
 
 Plus the original `01-*`/`02-*`/`03-*` basics, mixed-frameworks, behavioral, and
 benign-baseline (false-positive) scenarios.
+
+<div align="right"><a href="#top">↑ back to top</a></div>
+
+<a name="correlate"></a>
+## Campaign correlation — `c2detect correlate`
+
+One detection says *"this host looks like Cobalt Strike."* Correlation answers
+the question that actually drives incident response: **which of your hosts are
+the same operator's infrastructure, and why.**
+
+Adversaries rotate IPs, domains and URL paths cheaply, but the *shape* of their
+listener and certificate stack is expensive to change — so it leaks across the
+estate. `correlate` clusters hosts that **literally share** an expensive-to-
+rotate pivot (reused cert serial, JARM, JA4S/JA3S, cert CN, …), draws the
+campaign graph with union-find, and shows the exact evidence inline. A lone
+shared port (weight 4) never fuses two hosts; a shared JARM (40) always does.
+
+```bash
+$ c2detect correlate week_telemetry.json
+== Campaign #0  [CRITICAL]  confidence=100  hosts=3  families: Cobalt Strike
+   host: 203.0.113.10
+   host: 203.0.113.11
+   host: 203.0.113.12
+   shared infrastructure pivots:
+     - cert_serial (w=50): 0a1b2c3d4e5f6a7b
+     - jarm (w=40): 07d14d16d21d21d07c42d41d00041d24a458a375eef0c576d23a7bab9a9fb1
+     - family (w=18): cobalt strike
+
+c2detect: 2 campaign(s) clustering 5 host(s) by shared C2 infrastructure.
+```
+
+```bash
+c2detect correlate obs.json --format json                 # machine-readable campaigns + edges
+c2detect correlate obs.json --format dot | dot -Tsvg -o g.svg   # Graphviz pivot graph
+c2detect correlate obs.json --fail-on critical            # CI gate (exit 2)
+c2detect correlate obs.json --edge-floor 38               # only JARM-class pivots link
+c2detect correlate obs.json --include-singletons          # full inventory incl. lone hosts
+```
+
+It does **not** attribute to a named actor and invents nothing — every reported
+pivot is a value two observations actually share. Full threat context, the
+weighting model, and a worked walkthrough are in
+**[docs/CORRELATION.md](docs/CORRELATION.md)**.
+
+![correlation pivot graph](docs/correlation_graph.svg)
 
 <div align="right"><a href="#top">↑ back to top</a></div>
 

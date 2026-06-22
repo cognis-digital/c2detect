@@ -36,6 +36,14 @@ from .core import (
     to_html,
     to_sarif,
 )
+from .correlate import (
+    correlate,
+    to_table as corr_to_table,
+    to_json as corr_to_json,
+    to_dot as corr_to_dot,
+    DEFAULT_EDGE_FLOOR as _CORR_EDGE_FLOOR,
+    DEFAULT_CAMPAIGN_THRESHOLD as _CORR_CAMPAIGN_THRESHOLD,
+)
 
 # Files we are willing to slurp when a directory is passed to `scan`.
 _TEXT_EXT = {".json", ".txt", ".log", ".jsonl", ".ndjson", ".csv", ".tsv", ".pcaplog"}
@@ -260,6 +268,38 @@ def _build_parser() -> argparse.ArgumentParser:
     fg.add_argument("feed", help="feodo-c2 | sslbl")
     fg.add_argument("--offline", action="store_true",
                     help="Serve from cache only (air-gap); no network.")
+
+    # correlate — cluster many observations into shared-infra campaigns.
+    p_corr = sub.add_parser(
+        "correlate",
+        help="Cluster many observations into shared-infrastructure campaigns "
+             "(same JARM/JA4S/cert across hosts = one operator's estate).",
+    )
+    p_corr.add_argument(
+        "paths", nargs="*",
+        help="Input file(s)/dir of observations. If omitted, reads stdin.")
+    p_corr.add_argument("--threshold", type=int, default=DEFAULT_THRESHOLD,
+                        help=f"Min per-host detection confidence (default "
+                             f"{DEFAULT_THRESHOLD}).")
+    p_corr.add_argument("--edge-floor", dest="edge_floor", type=int,
+                        default=_CORR_EDGE_FLOOR,
+                        help=f"Min joint pivot weight to link two hosts "
+                             f"(default {_CORR_EDGE_FLOOR}; a lone shared port "
+                             f"never links, a shared JARM does).")
+    p_corr.add_argument("--campaign-threshold", dest="campaign_threshold",
+                        type=int, default=_CORR_CAMPAIGN_THRESHOLD,
+                        help=f"Min campaign confidence to report (default "
+                             f"{_CORR_CAMPAIGN_THRESHOLD}).")
+    p_corr.add_argument("--include-singletons", action="store_true",
+                        help="Also emit lone, unclustered hosts (full inventory).")
+    p_corr.add_argument("--format", choices=("table", "json", "dot"),
+                        default="table",
+                        help="table | json | dot (Graphviz). Pipe dot to "
+                             "`dot -Tsvg`.")
+    p_corr.add_argument("--fail-on", dest="fail_on",
+                        choices=tuple(SEVERITY_ORDER), default=None,
+                        help="Exit non-zero if a campaign at/above this "
+                             "severity is found (CI gate).")
 
     # mcp — run as an MCP server.
     sub.add_parser("mcp", help="Run the MCP server (stdio JSON-RPC).")
@@ -490,6 +530,39 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         else:
             print(text)
         return 0
+
+    if args.command == "correlate":
+        try:
+            if args.paths:
+                blobs = _gather_inputs(args.paths)
+            else:
+                blobs = [_read_stdin()]
+        except OSError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        results: List[ScanResult] = []
+        for blob in blobs:
+            results.extend(_results_for_blob(blob, "", args.threshold))
+        campaigns = correlate(
+            results,
+            edge_floor=args.edge_floor,
+            campaign_threshold=args.campaign_threshold,
+            include_singletons=args.include_singletons,
+        )
+        if args.format == "json":
+            print(json.dumps(corr_to_json(campaigns), indent=2, sort_keys=False))
+        elif args.format == "dot":
+            print(corr_to_dot(campaigns))
+        else:
+            print(corr_to_table(campaigns))
+
+        if args.fail_on is not None:
+            limit = SEVERITY_ORDER.get(args.fail_on, 9)
+            gated = any(
+                SEVERITY_ORDER.get(c.severity, 9) <= limit for c in campaigns
+            )
+            return 2 if gated else 0
+        return 1 if campaigns else 0
 
     if args.command == "feeds":
         from . import feeds as feedmod

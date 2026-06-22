@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="430" viewBox="0 0 760 430" font-family="monospace" role="img" aria-label="C2DETECT correlation pivot graph">
+  <!-- Generated diagram, CC0 / public-domain. Author: Cognis Digital. No third-party assets. -->
+  <rect width="760" height="430" fill="#0e1116"/>
+  <text x="24" y="34" fill="#e6edf3" font-size="18" font-weight="bold">c2detect correlate — shared-infrastructure campaigns</text>
+  <text x="24" y="56" fill="#8b949e" font-size="12">edges link hosts on expensive-to-rotate pivots (JARM / cert serial); thickness = pivot strength</text>
+
+  <!-- Campaign 0: Cobalt Strike redirector farm (critical / red) -->
+  <rect x="40" y="90" width="320" height="220" rx="10" fill="none" stroke="#b00020" stroke-width="2" stroke-dasharray="4 3"/>
+  <text x="56" y="112" fill="#b00020" font-size="13" font-weight="bold">Campaign #0 — Cobalt Strike (CRITICAL, conf=100)</text>
+
+  <!-- edges first so nodes sit on top -->
+  <line x1="120" y1="170" x2="280" y2="170" stroke="#b00020" stroke-width="6"/>
+  <line x1="120" y1="170" x2="200" y2="270" stroke="#b00020" stroke-width="4"/>
+  <line x1="280" y1="170" x2="200" y2="270" stroke="#b00020" stroke-width="4"/>
+  <text x="150" y="162" fill="#f0a0a8" font-size="10">cert_serial=108</text>
+  <text x="118" y="232" fill="#f0a0a8" font-size="10">jarm=62</text>
+  <text x="232" y="232" fill="#f0a0a8" font-size="10">jarm=58</text>
+
+  <g>
+    <rect x="64" y="150" width="112" height="40" rx="6" fill="#1d2330" stroke="#b00020"/>
+    <text x="120" y="174" fill="#e6edf3" font-size="11" text-anchor="middle">203.0.113.10</text>
+    <rect x="224" y="150" width="112" height="40" rx="6" fill="#1d2330" stroke="#b00020"/>
+    <text x="280" y="174" fill="#e6edf3" font-size="11" text-anchor="middle">203.0.113.11</text>
+    <rect x="144" y="250" width="112" height="40" rx="6" fill="#1d2330" stroke="#b00020"/>
+    <text x="200" y="274" fill="#e6edf3" font-size="11" text-anchor="middle">203.0.113.12</text>
+  </g>
+
+  <!-- Campaign 1: Metasploit listeners (high / orange) -->
+  <rect x="420" y="90" width="300" height="150" rx="10" fill="none" stroke="#f0ad4e" stroke-width="2" stroke-dasharray="4 3"/>
+  <text x="436" y="112" fill="#f0ad4e" font-size="13" font-weight="bold">Campaign #1 — Metasploit (HIGH, conf=58)</text>
+  <line x1="500" y1="170" x2="640" y2="170" stroke="#f0ad4e" stroke-width="4"/>
+  <text x="530" y="162" fill="#f5d29a" font-size="10">jarm=40</text>
+  <rect x="444" y="150" width="112" height="40" rx="6" fill="#1d2330" stroke="#f0ad4e"/>
+  <text x="500" y="174" fill="#e6edf3" font-size="11" text-anchor="middle">198.51.100.5</text>
+  <rect x="584" y="150" width="112" height="40" rx="6" fill="#1d2330" stroke="#f0ad4e"/>
+  <text x="640" y="174" fill="#e6edf3" font-size="11" text-anchor="middle">198.51.100.6</text>
+
+  <!-- Isolated benign host -->
+  <rect x="540" y="300" width="160" height="44" rx="6" fill="#161b22" stroke="#30363d" stroke-dasharray="3 3"/>
+  <text x="620" y="320" fill="#8b949e" font-size="11" text-anchor="middle">192.0.2.200 (nginx)</text>
+  <text x="620" y="336" fill="#6e7681" font-size="9" text-anchor="middle">no shared pivot — not clustered</text>
+
+  <!-- Legend -->
+  <text x="24" y="390" fill="#8b949e" font-size="11">Pivot weights: cert_serial 50 &gt; JA4X 44 &gt; JARM 40 &gt; JA4S 38 &gt; cert_CN 30 &gt; family 18 &gt; URI 12 &gt; port 4</text>
+  <text x="24" y="410" fill="#6e7681" font-size="10">Defensive situational-awareness only. No attribution, no network action. Synthetic example values.</text>
+</svg>

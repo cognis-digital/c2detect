@@ -1,0 +1,10 @@
+{
+  "observations": [
+    {"host": "203.0.113.10", "jarm": "07d14d16d21d21d07c42d41d00041d24a458a375eef0c576d23a7bab9a9fb1", "port": 443, "cert": "CN=update.example.test issuer=CN=update.example.test serial: 0a1b2c3d4e5f6a7b"},
+    {"host": "203.0.113.11", "jarm": "07d14d16d21d21d07c42d41d00041d24a458a375eef0c576d23a7bab9a9fb1", "port": 8443, "cert": "CN=cdn.example.test serial: 0a1b2c3d4e5f6a7b"},
+    {"host": "203.0.113.12", "jarm": "07d14d16d21d21d07c42d41d00041d24a458a375eef0c576d23a7bab9a9fb1", "port": 443},
+    {"host": "198.51.100.5", "jarm": "07d14d16d21d21d00042d43d000000aa99ce74e2c6d013c745aa52b5cc042d", "port": 4444},
+    {"host": "198.51.100.6", "jarm": "07d14d16d21d21d00042d43d000000aa99ce74e2c6d013c745aa52b5cc042d", "port": 8080},
+    {"host": "192.0.2.200", "port": 80, "http_banner": "nginx"}
+  ]
+}

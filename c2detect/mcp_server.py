@@ -87,6 +87,34 @@ def scan(payload: Any) -> dict[str, Any]:
     }
 
 
+def correlate_tool(payload: Any) -> dict[str, Any]:
+    """MCP tool: cluster many observations into shared-infrastructure campaigns.
+
+    Accepts the same shapes as ``scan`` (a JSON string, a dict with an
+    ``observations`` list, or a bare list). Returns the correlation document.
+    """
+    from .correlate import correlate, to_json
+
+    threshold = 35
+    recs: list[dict] = []
+    if isinstance(payload, str):
+        loaded = load_records(payload)
+        recs = loaded or []
+    elif isinstance(payload, list):
+        recs = [r for r in payload if isinstance(r, dict)]
+    elif isinstance(payload, dict):
+        threshold = int(payload.get("threshold", 35) or 35)
+        if isinstance(payload.get("observations"), list):
+            recs = [r for r in payload["observations"] if isinstance(r, dict)]
+        elif "host" in payload or "jarm" in payload or "ja4" in payload:
+            recs = [payload]
+    results = [
+        scan_observation(observation_from_record(r), threshold) for r in recs
+    ]
+    campaigns = correlate(results)
+    return to_json(campaigns)
+
+
 # ---------------------------------------------------------------------------
 # Stdlib JSON-RPC 2.0 / MCP stdio loop (fallback, no third-party deps).
 # ---------------------------------------------------------------------------
@@ -130,6 +158,14 @@ def _handle(msg: dict[str, Any]) -> None:
                     "description": "List the bundled C2 signature database.",
                     "inputSchema": {"type": "object", "properties": {}},
                 },
+                {
+                    "name": "correlate",
+                    "description": (
+                        "Cluster many observations into shared-infrastructure "
+                        "C2 campaigns (same JARM/JA4S/cert across hosts = one "
+                        "operator's estate). Defensive triage only."),
+                    "inputSchema": _INPUT_SCHEMA,
+                },
             ]
         })
     elif method == "tools/call":
@@ -140,6 +176,8 @@ def _handle(msg: dict[str, Any]) -> None:
                 out = scan(args)
             elif name == "list_signatures":
                 out = {"families": list_signatures()}
+            elif name == "correlate":
+                out = correlate_tool(args)
             else:
                 _error(rid, -32601, f"unknown tool: {name}")
                 return
