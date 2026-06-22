@@ -1,0 +1,9 @@
+################################################################
+# abuse.ch Suricata JA3 Fingerprint Blacklist (CSV)            #
+# ja3_md5,Firstseen,Lastseen,Listingreason                    #
+################################################################
+#
+# ja3_md5,Firstseen,Lastseen,Listingreason
+a0e9f5d64349fb13191bc781f81f42e1,2026-05-02 09:00:00,2026-06-19 11:00:00,Cobalt Strike
+72a589da586844d7f0818ce684948eea,2026-04-20 14:00:00,2026-06-18 10:00:00,TrickBot
+e7d705a3286e19ea42f587b344ee6865,2026-03-30 07:00:00,2026-06-15 09:00:00,Emotet

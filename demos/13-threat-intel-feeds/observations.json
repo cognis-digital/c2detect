@@ -1,0 +1,5 @@
+[
+  {"host": "45.142.212.61", "ja3": "72a589da586844d7f0818ce684948eea", "port": 443},
+  {"host": "185.220.101.45", "port": 8080},
+  {"host": "192.0.2.10", "ja3": "deadbeefdeadbeefdeadbeefdeadbeef"}
+]

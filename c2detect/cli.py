@@ -4,6 +4,7 @@ Subcommands:
   scan   — scan JSON observation files / free-text telemetry / stdin / dirs
   match  — match explicit indicators passed on the command line
   db     — list the bundled C2 signature database
+  feeds  — list/update/get the live abuse.ch threat-intel feeds (edge/air-gap)
   mcp    — run the Model Context Protocol server (stdio JSON-RPC)
 
 Output formats: table | json | sarif.  CI gating: --fail-on <severity>.
@@ -193,6 +194,13 @@ def _build_parser() -> argparse.ArgumentParser:
                              "source and merge novel findings (off by default; "
                              "needs COGNIS_AI_BACKEND/ENDPOINT; degrades to rules "
                              "if backend is down).")
+    p_scan.add_argument("--feeds", action="store_true",
+                        help="Cross-reference each observation's host IP / JA3 "
+                             "against the live abuse.ch Feodo-C2 + SSLBL feeds "
+                             "and append known-malicious hits.")
+    p_scan.add_argument("--offline", action="store_true",
+                        help="With --feeds, serve cached feeds only (air-gap); "
+                             "never touch the network.")
 
     # match — explicit indicators on the command line.
     p_match = sub.add_parser(
@@ -222,6 +230,11 @@ def _build_parser() -> argparse.ArgumentParser:
                          choices=tuple(SEVERITY_ORDER), default=None)
     p_match.add_argument("--ai", action="store_true",
                          help="OPT-IN LLM pass (off by default).")
+    p_match.add_argument("--feeds", action="store_true",
+                         help="Cross-reference host IP / JA3 against live "
+                              "abuse.ch Feodo-C2 + SSLBL feeds.")
+    p_match.add_argument("--offline", action="store_true",
+                         help="With --feeds, serve cached feeds only (air-gap).")
 
     # db — list bundled signatures.
     p_db = sub.add_parser("db", help="List the bundled C2 signature database.")
@@ -233,6 +246,20 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Generate Sigma / Suricata detection rules from the signature DB.")
     p_rules.add_argument("--format", choices=("sigma", "suricata"), default="sigma")
     p_rules.add_argument("-o", "--output", help="write to file instead of stdout")
+
+    # feeds — live abuse.ch threat-intel feeds (edge/air-gap deployable).
+    p_feeds = sub.add_parser(
+        "feeds",
+        help="List/update/get the live abuse.ch Feodo-C2 + SSLBL threat-intel "
+             "feeds c2detect consumes (keyless; cached; offline re-serve).")
+    fsub = p_feeds.add_subparsers(dest="feeds_cmd")
+    fsub.add_parser("list", help="List the consumed feeds + cache freshness.")
+    fu = fsub.add_parser("update", help="Fetch + cache feeds (online).")
+    fu.add_argument("feeds", nargs="*", help="feed id(s); default: all relevant")
+    fg = fsub.add_parser("get", help="Print parsed indicators from one feed.")
+    fg.add_argument("feed", help="feodo-c2 | sslbl")
+    fg.add_argument("--offline", action="store_true",
+                    help="Serve from cache only (air-gap); no network.")
 
     # mcp — run as an MCP server.
     sub.add_parser("mcp", help="Run the MCP server (stdio JSON-RPC).")
@@ -277,11 +304,52 @@ def _ai_total(ai_by_index: Optional[dict]) -> int:
     return sum(len(v) for v in (ai_by_index or {}).values())
 
 
+def _run_feeds_pass(
+    results: List[ScanResult],
+    offline: bool,
+) -> dict:
+    """Cross-reference each observation against the live abuse.ch feeds.
+
+    Returns ``{index: [hit,...]}``. NEVER raises: a missing/stale cache while
+    offline, or an unreachable feed while online, prints a note to stderr and
+    returns ``{}`` so the deterministic rule findings stand alone.
+    """
+    try:
+        from . import feeds as feedmod
+    except Exception as exc:  # pragma: no cover - import guard
+        print(f"note: feeds module unavailable ({exc}); rule findings only.",
+              file=sys.stderr)
+        return {}
+    try:
+        feodo = feedmod.feodo_c2_ips(offline=offline)
+        ja3bl = feedmod.sslbl_ja3(offline=offline)
+    except FileNotFoundError as exc:
+        print(f"note: --feeds --offline but feeds not cached ({exc}); "
+              "run `c2detect feeds update`. Continuing with rule findings only.",
+              file=sys.stderr)
+        return {}
+    except (ConnectionError, OSError) as exc:
+        print(f"note: --feeds could not fetch ({exc}); rule findings only.",
+              file=sys.stderr)
+        return {}
+    out: dict = {}
+    for i, r in enumerate(results):
+        hits = feedmod.enrich_observation(r.observation, feodo=feodo, ja3bl=ja3bl)
+        if hits:
+            out[i] = hits
+    return out
+
+
+def _feed_total(feed_by_index: Optional[dict]) -> int:
+    return sum(len(v) for v in (feed_by_index or {}).values())
+
+
 def _emit(
     results: List[ScanResult],
     fmt: str,
     fail_on: Optional[str],
     ai_by_index: Optional[dict] = None,
+    feed_by_index: Optional[dict] = None,
 ) -> int:
     if fmt == "badge":
         print(json.dumps(to_badge(results, ai_by_index), indent=2))
@@ -307,6 +375,11 @@ def _emit(
                 f for findings in ai_by_index.values() for f in findings
             ]
             payload["ai_finding_count"] = _ai_total(ai_by_index)
+        if feed_by_index:
+            payload["feed_findings"] = [
+                f for hits in feed_by_index.values() for f in hits
+            ]
+            payload["feed_finding_count"] = _feed_total(feed_by_index)
         print(json.dumps(payload, indent=2, sort_keys=False))
     else:
         chunks = [_render_scan_table(r) for r in results]
@@ -319,17 +392,34 @@ def _emit(
                     tag = " [novel candidate]" if f.get("candidate_novel") else ""
                     print(f"    - [{f.get('severity', 'info').upper()}] "
                           f"{f.get('title', '(untitled)')}{tag}")
+        if feed_by_index:
+            print("\n  Threat-intel feed hits (abuse.ch Feodo-C2 / SSLBL):")
+            for hits in feed_by_index.values():
+                for f in hits:
+                    print(f"    - [{f.get('severity', 'info').upper()}] "
+                          f"({f.get('source')}) {f.get('title', '(untitled)')}")
         print(f"\n{TOOL_NAME}: {total} C2 indicator(s) across "
               f"{len(results)} observation(s)"
               + (f" + {_ai_total(ai_by_index)} AI finding(s)"
-                 if ai_by_index else ""))
+                 if ai_by_index else "")
+              + (f" + {_feed_total(feed_by_index)} feed hit(s)"
+                 if feed_by_index else ""))
 
     if fail_on is not None:
         gated = (fails_gate_with_ai(results, ai_by_index, fail_on)
                  if ai_by_index else fails_gate(results, fail_on))
+        # A live-feed hit at/above the gate severity also fails the gate: a host
+        # confirmed malicious by abuse.ch is at least as actionable as a rule.
+        limit = SEVERITY_ORDER.get(fail_on, 9)
+        for hits in (feed_by_index or {}).values():
+            if any(SEVERITY_ORDER.get(h.get("severity", "info"), 9) <= limit
+                   for h in hits):
+                gated = True
+                break
         return 2 if gated else 0
-    # Default: non-zero when any C2 match (rule or AI) is found (pipeline signal).
-    if any(r.count for r in results) or _ai_total(ai_by_index):
+    # Default: non-zero when any C2 match (rule / AI / feed) is found.
+    if any(r.count for r in results) or _ai_total(ai_by_index) \
+            or _feed_total(feed_by_index):
         return 1
     return 0
 
@@ -355,7 +445,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             results = [scan_observation(Observation(host=args.host),
                                         threshold=args.threshold)]
         ai_by_index = _run_ai_pass(blobs, results) if args.ai else None
-        return _emit(results, args.format, args.fail_on, ai_by_index)
+        feed_by_index = (_run_feeds_pass(results, args.offline)
+                         if args.feeds else None)
+        return _emit(results, args.format, args.fail_on, ai_by_index,
+                     feed_by_index)
 
     if args.command == "match":
         obs = Observation(
@@ -370,7 +463,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if args.ai:
             blob = json.dumps(obs.as_dict())
             ai_by_index = _run_ai_pass([blob], [result])
-        return _emit([result], args.format, args.fail_on, ai_by_index)
+        feed_by_index = (_run_feeds_pass([result], args.offline)
+                         if args.feeds else None)
+        return _emit([result], args.format, args.fail_on, ai_by_index,
+                     feed_by_index)
 
     if args.command == "db":
         rows = list_signatures()
@@ -394,6 +490,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         else:
             print(text)
         return 0
+
+    if args.command == "feeds":
+        from . import feeds as feedmod
+        return feedmod.run_cli(args)
 
     if args.command == "mcp":
         from .mcp_server import run_mcp_server

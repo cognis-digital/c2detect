@@ -38,6 +38,7 @@ c2detect scan .            # → prioritized findings in seconds
    c2detect match --ja4 t13d1516h2_8daaf6152771_b186095e22b6 --port 443 --beacon-interval 60 --jitter 0.1
    c2detect db        # list the bundled C2 signature database
    ```
+   Add `--feeds` to any `scan`/`match` to cross-reference host IPs / JA3s against the live [abuse.ch](https://abuse.ch) Feodo-C2 + SSLBL threat-intel feeds (cached, offline-capable — see [Live threat-intel feeds](#live-threat-intel-feeds-edge--air-gap-deployable)).
 4. **Read the output** in JSON / SARIF / HTML / badge (e.g. for code scanning):
    ```bash
    c2detect scan telemetry.json --format sarif > c2.sarif
@@ -253,6 +254,56 @@ Guarantees:
 - **Off by default.** Without `--ai`, output is **byte-for-byte deterministic** and contains no AI keys.
 - **Never crashes.** If `--ai` is given but no backend is configured, or the backend is unreachable, `c2detect` prints a clear note and continues with the rule findings only.
 - **Local-first.** Honors `COGNIS_AI_BACKEND` / `COGNIS_AI_ENDPOINT` / `COGNIS_AI_MODEL` / `COGNIS_AI_KEY` — designed for the [uncensored-fleet](https://github.com/cognis-digital/uncensored-fleet) and `cognis-code` local endpoints.
+
+<div align="right"><a href="#top">↑ back to top</a></div>
+
+## Live threat-intel feeds (edge / air-gap deployable)
+
+The bundled signature DB catches the *default* fingerprints of known C2
+frameworks. `--feeds` adds a complementary signal: it cross-references every
+observation against **real, public, keyless** [abuse.ch](https://abuse.ch)
+threat-intel feeds, so a host that is already *known* malicious is flagged even
+when its TLS profile has been customised away from a documented default.
+
+Two feeds are wired (c2detect's domain is threat-intel — the catalog is
+filtered so only these surface):
+
+| feed id | source | what it adds |
+|---|---|---|
+| `feodo-c2` | [Feodo Tracker C2 IP blocklist](https://feodotracker.abuse.ch/downloads/ipblocklist.json) | observation **host IP** on the active-botnet C2 list → **CRITICAL** hit (Emotet/Dridex/QakBot/…) |
+| `sslbl` | [SSLBL malicious JA3 fingerprints](https://sslbl.abuse.ch/blacklist/ja3_fingerprints.csv) | observation **JA3** on the malicious-fingerprint blacklist → **HIGH** hit |
+
+```bash
+c2detect feeds list                 # the feeds c2detect consumes + cache age
+c2detect feeds update               # fetch + cache them (online)
+c2detect feeds get feodo-c2         # inspect parsed indicators
+
+# Enrich a scan. A feed hit at/above --fail-on severity also trips the CI gate.
+c2detect scan telemetry.json --feeds
+c2detect scan telemetry.json --feeds --fail-on critical
+```
+
+### Edge / air-gap (offline + snapshot)
+
+Feeds are fetched over HTTPS once, cached to disk
+(`COGNIS_FEEDS_CACHE`, default `~/.cache/cognis-feeds`), and re-served with
+`--offline` so c2detect keeps working on a disconnected / military / edge box.
+To move intel across an air gap, sneakernet the cache:
+
+```bash
+# Connected host: refresh + pack.
+c2detect feeds update
+python -m c2detect.datafeeds snapshot-export feeds.tar.gz
+
+# Air-gapped enclave: import + run with zero network.
+python -m c2detect.datafeeds snapshot-import feeds.tar.gz
+c2detect scan obs.json --feeds --offline
+```
+
+`--feeds` never crashes the scan: if the cache is missing while `--offline`, or
+a feed is unreachable while online, c2detect prints a note and continues with
+the deterministic rule findings. See **`demos/13-threat-intel-feeds/`** for a
+pre-seeded snapshot you can run offline immediately.
 
 <div align="right"><a href="#top">↑ back to top</a></div>
 
