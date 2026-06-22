@@ -819,9 +819,10 @@ def scan_text(
 def load_records(text: str) -> list[dict[str, Any]] | None:
     """If ``text`` is a JSON observation file, return the list of records.
 
-    Accepts a bare list of objects, or an object with an ``observations``
-    (or ``records``/``hosts``) array, or a single object. Returns ``None`` when
-    the text is not parseable JSON (caller should fall back to text scanning).
+    Accepts a bare list of objects, an object with an ``observations``
+    (or ``records``/``hosts``) array, a single object, or JSONL/NDJSON (one
+    JSON object per line, as emitted by Zeek/Suricata/EDR). Returns ``None``
+    when the text is not parseable (caller should fall back to text scanning).
     """
     stripped = text.lstrip()
     if not stripped or stripped[0] not in "[{":
@@ -829,6 +830,22 @@ def load_records(text: str) -> list[dict[str, Any]] | None:
     try:
         data = json.loads(text)
     except (ValueError, TypeError):
+        # JSONL / NDJSON: one JSON object per line. Accept when at least half of
+        # the non-blank lines parse as objects (real streaming telemetry).
+        recs: list[dict[str, Any]] = []
+        lines = [ln for ln in stripped.splitlines() if ln.strip()]
+        for ln in lines:
+            ln = ln.strip()
+            if not (ln.startswith("{") and ln.endswith("}")):
+                continue
+            try:
+                obj = json.loads(ln)
+            except (ValueError, TypeError):
+                continue
+            if isinstance(obj, dict):
+                recs.append(obj)
+        if recs and len(recs) >= max(1, len(lines) // 2):
+            return recs
         return None
     if isinstance(data, list):
         return [r for r in data if isinstance(r, dict)]

@@ -4,7 +4,11 @@ Defensive / authorized-triage use only. Reads TLS / network observation
 records (JA4/JA4S/JA3/JARM fingerprints, ports, URIs, cert text, HTTP banners)
 and scores them against a bundled database of 12+ documented Command-and-
 Control framework fingerprints, in the spirit of the FoxIO JA4+/JARM DBs.
-No network, no active capability.
+
+Passive by default (no network). An OPT-IN, authorization-gated active probe
+(``c2detect probe``) can TLS-fingerprint a consented, in-scope host:port — OFF
+by default, requires ``--authorized`` + a ``--target-allowlist`` + a rate
+limit, and refuses anything outside scope. See ``c2detect.active``.
 """
 
 from __future__ import annotations
@@ -34,6 +38,17 @@ from .core import (
     to_html,
     to_sarif,
     worst_severity,
+)
+from .active import (
+    AUTHORIZED_USE_BANNER,
+    NotAuthorizedError,
+    ProbeResult,
+    RateLimiter,
+    Scope,
+    ScopeError,
+    jarm_like,
+    probe_target,
+    probe_targets,
 )
 from .rules import to_sigma, to_suricata, generate
 from .correlate import (
@@ -85,4 +100,13 @@ __all__ = [
     "PIVOT_WEIGHTS",
     "DEFAULT_EDGE_FLOOR",
     "DEFAULT_CAMPAIGN_THRESHOLD",
+    "AUTHORIZED_USE_BANNER",
+    "Scope",
+    "ScopeError",
+    "NotAuthorizedError",
+    "RateLimiter",
+    "ProbeResult",
+    "probe_target",
+    "probe_targets",
+    "jarm_like",
 ]

@@ -301,6 +301,50 @@ def _build_parser() -> argparse.ArgumentParser:
                         help="Exit non-zero if a campaign at/above this "
                              "severity is found (CI gate).")
 
+    # probe — AUTHORIZATION-GATED active TLS probe (OFF by default).
+    p_probe = sub.add_parser(
+        "probe",
+        help="AUTHORIZED ACTIVE: TLS-fingerprint a consented host:port in scope "
+             "(default OFF; needs --authorized + --target-allowlist + rate limit).",
+        description="Active defensive probe: opens a TLS handshake (+ optional "
+                    "benign HTTP HEAD) to a host you are AUTHORIZED to assess, "
+                    "records its cert/JARM/banner, and runs the passive scanner "
+                    "on the result. Sends no payloads, takes no offensive "
+                    "action. OFF by default and refuses any target not in the "
+                    "allowlist.",
+    )
+    p_probe.add_argument("targets", nargs="*",
+                         help="host or host:port target(s) to probe (must be in "
+                              "the allowlist). Default port 443.")
+    p_probe.add_argument("--authorized", action="store_true",
+                         help="REQUIRED: assert you have documented authorization "
+                              "to probe every target in scope. Without this the "
+                              "probe is refused.")
+    p_probe.add_argument("--target-allowlist", dest="allowlist", action="append",
+                         default=[],
+                         help="REQUIRED: an in-scope host / host:port / CIDR. "
+                              "Repeatable. Targets outside it are refused.")
+    p_probe.add_argument("--allowlist-file", dest="allowlist_file", default=None,
+                         help="Read additional allowlist entries (one per line; "
+                              "'#' comments) from a file.")
+    p_probe.add_argument("--rate-limit", dest="rate_limit", type=float,
+                         default=2.0,
+                         help="Max connections/second (default 2.0; must be > 0).")
+    p_probe.add_argument("--timeout", type=float, default=6.0,
+                         help="Per-connection timeout seconds (default 6).")
+    p_probe.add_argument("--no-http", dest="http_head", action="store_false",
+                         help="Skip the benign HTTP HEAD; TLS handshake only.")
+    p_probe.add_argument("--verify-tls", dest="verify", action="store_true",
+                         help="Verify the server cert chain (off by default so a "
+                              "self-signed C2 cert can still be fingerprinted).")
+    p_probe.add_argument("--default-port", dest="default_port", type=int,
+                         default=443, help="Port for bare-host targets (def 443).")
+    p_probe.add_argument("--threshold", type=int, default=DEFAULT_THRESHOLD)
+    p_probe.add_argument("--format", choices=_FORMATS, default="table",
+                         help="table | json | sarif | html | badge")
+    p_probe.add_argument("--fail-on", dest="fail_on",
+                         choices=tuple(SEVERITY_ORDER), default=None)
+
     # mcp — run as an MCP server.
     sub.add_parser("mcp", help="Run the MCP server (stdio JSON-RPC).")
 
@@ -464,6 +508,76 @@ def _emit(
     return 0
 
 
+def _load_allowlist(args) -> List[str]:
+    entries = list(args.allowlist or [])
+    if getattr(args, "allowlist_file", None):
+        with open(args.allowlist_file, "r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.split("#", 1)[0].strip()
+                if line:
+                    entries.append(line)
+    return entries
+
+
+def _run_probe(args) -> int:
+    """AUTHORIZATION-GATED active probe handler. Default OFF; refuses out-of-scope."""
+    from .active import (
+        AUTHORIZED_USE_BANNER, Scope, NotAuthorizedError, ScopeError,
+        probe_targets,
+    )
+    # Loud authorized-use banner — always, before anything else.
+    print(AUTHORIZED_USE_BANNER, file=sys.stderr)
+
+    if not args.authorized:
+        print("error: active probing is OFF by default. Re-run with --authorized "
+              "AND --target-allowlist once you have documented authorization.",
+              file=sys.stderr)
+        return 2
+    allow = _load_allowlist(args)
+    if not allow:
+        print("error: --authorized given but no --target-allowlist/-file scope. "
+              "Refusing to probe without an explicit allowlist.", file=sys.stderr)
+        return 2
+    if not args.targets:
+        print("error: no targets given.", file=sys.stderr)
+        return 2
+    if args.rate_limit <= 0:
+        print("error: --rate-limit must be > 0.", file=sys.stderr)
+        return 2
+
+    scope = Scope.from_iterable(allow)
+    try:
+        probes = probe_targets(
+            args.targets, authorized=True, scope=scope,
+            rate_limit=args.rate_limit, timeout=args.timeout,
+            verify=args.verify, http_head=args.http_head,
+            default_port=args.default_port, skip_out_of_scope=True,
+        )
+    except (NotAuthorizedError, ScopeError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    results: List[ScanResult] = []
+    refused = 0
+    errored = 0
+    for pr in probes:
+        if pr.error.startswith("REFUSED"):
+            refused += 1
+            print(f"  refused (out of scope): {pr.target}", file=sys.stderr)
+            continue
+        if not pr.ok:
+            errored += 1
+            print(f"  probe failed: {pr.target}: {pr.error}", file=sys.stderr)
+            continue
+        results.append(scan_observation(pr.observation, threshold=args.threshold))
+
+    if not results:
+        print(f"\nc2detect probe: no reachable in-scope targets "
+              f"({refused} refused, {errored} unreachable).", file=sys.stderr)
+        return 0 if args.fail_on is not None else (0 if not args.targets else 0)
+    return _emit(results, args.format, args.fail_on, None, None)
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -563,6 +677,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             )
             return 2 if gated else 0
         return 1 if campaigns else 0
+
+    if args.command == "probe":
+        return _run_probe(args)
 
     if args.command == "feeds":
         from . import feeds as feedmod

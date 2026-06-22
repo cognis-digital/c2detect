@@ -1,0 +1,15 @@
+{
+  "name": "@cognis/c2detect-ts",
+  "version": "0.2.0",
+  "description": "TypeScript port of c2detect (Cognis Neural Suite)",
+  "type": "module",
+  "license": "LicenseRef-COCL-1.0",
+  "scripts": {
+    "build": "tsc",
+    "test": "tsx --test index.test.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "tsx": "^4.7.0"
+  }
+}

@@ -11,7 +11,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/cognis-c2detect.svg?color=6b46c1)](https://pypi.org/project/cognis-c2detect/) [![CI](https://github.com/cognis-digital/c2detect/actions/workflows/ci.yml/badge.svg)](https://github.com/cognis-digital/c2detect/actions) [![License: COCL 1.0](https://img.shields.io/badge/License-COCL%201.0-2b6cb0.svg)](LICENSE) [![Suite](https://img.shields.io/badge/Cognis-Neural%20Suite-6b46c1.svg)](https://github.com/cognis-digital)
 
-*Blue Team / Defensive — detect known C2 infrastructure from telemetry. No network, no active capability.*
+*Blue Team / Defensive — detect known C2 infrastructure from telemetry. Passive by default; an opt-in, authorization-gated active probe is available for hosts you are authorized to assess.*
 
 </div>
 
@@ -22,7 +22,7 @@ c2detect scan .            # → prioritized findings in seconds
 
 ## Usage — step by step
 
-`c2detect` is defensive C2-infrastructure triage: it scans telemetry/observation records against a bundled signature DB and flags beaconing, suspicious TLS fingerprints, and staging URIs. No network, no active capability.
+`c2detect` is defensive C2-infrastructure triage: it scans telemetry/observation records against a bundled signature DB and flags beaconing, suspicious TLS fingerprints, and staging URIs. **It is passive by default** — `scan`/`match`/`correlate`/`db`/`rules` read input you provide and make no network calls (the optional `--feeds` only pulls public abuse.ch intel feeds, which can run fully offline from cache). A separate, **opt-in and authorization-gated** active probe (`c2detect probe`) can TLS-fingerprint a consented host you are authorized to assess — see [Passive vs. active](#passive-vs-active).
 
 1. **Install** (Python 3.10+):
    ```bash
@@ -54,9 +54,46 @@ c2detect scan .            # → prioritized findings in seconds
    ```
 
 
+<a name="passive-vs-active"></a>
+## Passive vs. active
+
+| | Passive (default) | Active (opt-in, gated) |
+|---|---|---|
+| Commands | `scan` · `match` · `correlate` · `db` · `rules` | `probe` |
+| Network | none (`--feeds` pulls public intel, offline-capable) | one TLS handshake + optional benign HTTP HEAD per target |
+| Default | **on** | **OFF** — refuses unless explicitly enabled |
+| Input | telemetry files / JSON / JSONL / text / stdin | a host:port **in an explicit allowlist** |
+
+**Passive mode** is the safe default and the right tool for almost everything: feed it Zeek/Suricata/EDR exports (JSON, JSONL/NDJSON, or free text), IOC sightings, or a directory of captures, and it scores them against the bundled C2 signature DB. It never reaches out to the targets.
+
+> ### ⚠️ Active mode — authorized defensive use only
+>
+> `c2detect probe` opens a **TLS handshake** (plus an optional, benign `HEAD /`) to a host **you are authorized to assess**, records its certificate / JARM / banner, and runs the same passive scanner on the result — effectively an authorized `openssl s_client` that fingerprints a suspected C2 team server. **It sends no payloads, runs no exploits, and takes no offensive action.**
+>
+> Active probing is **OFF by default**. To run a probe, **all** of the following are required, or it refuses:
+>
+> 1. `--authorized` — you assert you have documented authorization for every target in scope;
+> 2. `--target-allowlist <host|host:port|CIDR>` (repeatable, or `--allowlist-file`) — a **mandatory** scope; any target not in it is refused and skipped;
+> 3. a positive `--rate-limit` (connections/second; default `2.0`).
+>
+> A loud authorized-use banner is printed to stderr on every invocation. Probing a host without authorization may be illegal — you are responsible for your scope.
+>
+> ```bash
+> # Authorized assessment of a single consented team server:
+> c2detect probe teamserver.lab.example:50050 \
+>     --authorized \
+>     --target-allowlist teamserver.lab.example:50050 \
+>     --rate-limit 1 --format json
+>
+> # Sweep an owned subnet from a scope file (out-of-scope hosts are skipped):
+> c2detect probe 10.10.5.10 10.10.5.11 8.8.8.8 \
+>     --authorized --allowlist-file scope.txt --rate-limit 2
+> # → 8.8.8.8 refused (out of scope); 10.10.5.x fingerprinted + scored
+> ```
+
 ## Contents
 
-- [Why c2detect?](#why) · [Features](#features) · [Quick start](#quick-start) · [Example](#example) · [Detection depth](#detection-depth) · [Campaign correlation](#correlate) · [GitHub Action](#github-action) · [Status badge](#status-badge) · [HTML report](#html-report) · [AI mode](#ai-mode) · [Architecture](#architecture) · [AI stack](#ai-stack) · [How it compares](#how-it-compares) · [Integrations](#integrations) · [Install anywhere](#install-anywhere) · [Related](#related) · [Contributing](#contributing)
+- [Why c2detect?](#why) · [Passive vs. active](#passive-vs-active) · [Features](#features) · [Quick start](#quick-start) · [Example](#example) · [Detection depth](#detection-depth) · [Campaign correlation](#correlate) · [GitHub Action](#github-action) · [Status badge](#status-badge) · [HTML report](#html-report) · [AI mode](#ai-mode) · [Architecture](#architecture) · [AI stack](#ai-stack) · [How it compares](#how-it-compares) · [Integrations](#integrations) · [Install anywhere](#install-anywhere) · [Related](#related) · [Contributing](#contributing)
 
 <a name="why"></a>
 ## Why c2detect?
@@ -77,8 +114,9 @@ C2 server fingerprinter — Cobalt Strike, Sliver, Mythic, Havoc, Brute Ratel �
 - ✅ **Reusable GitHub Action** (`uses: cognis-digital/c2detect@main`) — comments findings on PRs, fails CI on `--fail-on`
 - ✅ **Opt-in AI mode** (`--ai`) over your local Cognis fleet — **off by default**, deterministic without it
 - ✅ Runs on Linux/macOS/Windows · Docker · devcontainer · MCP server
-- ✅ Ports in Python, JavaScript, Go, and Rust (`ports/`)
-- 🛡️ Strictly **defensive** — detection from observations only, no network, no active capability
+- ✅ Polyglot core ports — Python (reference), Go, Rust, JavaScript, TypeScript, and POSIX Shell (`ports/`), each with its own tests + CI
+- ✅ **Authorization-gated active probe** (`c2detect probe`) — **off by default**; TLS-fingerprints a *consented, in-scope* host (needs `--authorized` + `--target-allowlist` + a rate limit). See [Passive vs. active](#passive-vs-active)
+- 🛡️ Strictly **defensive** — passive triage by default; the optional active probe is authorization-gated, scope-enforced, and sends no payloads
 
 <div align="right"><a href="#top">↑ back to top</a></div>
 
@@ -419,6 +457,16 @@ curl -fsSL https://raw.githubusercontent.com/cognis-digital/c2detect/main/instal
 | Linux | macOS | Windows | Docker | Cloud |
 |---|---|---|---|---|
 | `scripts/setup-linux.sh` | `scripts/setup-macos.sh` | `scripts/setup-windows.ps1` | `docker run ghcr.io/cognis-digital/c2detect` | [DEPLOY.md](docs/DEPLOY.md) (AWS/Azure/GCP/k8s) |
+
+**Drop the core check into any stack** — the JARM/JA3/port/URI scorer is ported to Go, Rust, JavaScript, TypeScript, and POSIX Shell (each with its own tests + CI) under [`ports/`](ports/README.md):
+
+```bash
+node ports/javascript/index.js obs.json          # JavaScript
+node --experimental-strip-types ports/typescript/index.ts obs.json   # TypeScript
+cd ports/go && go run . obs.json                  # Go
+cd ports/rust && cargo run -- obs.json            # Rust
+sh ports/shell/c2detect.sh obs.json               # POSIX shell
+```
 
 <div align="right"><a href="#top">↑ back to top</a></div>
 
