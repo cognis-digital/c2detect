@@ -345,6 +345,13 @@ def _build_parser() -> argparse.ArgumentParser:
     p_probe.add_argument("--fail-on", dest="fail_on",
                          choices=tuple(SEVERITY_ORDER), default=None)
 
+    # self-check — scan bundled demos and report detection coverage.
+    p_sc = sub.add_parser(
+        "self-check",
+        help="Scan bundled demo scenarios and report C2 detection coverage.")
+    p_sc.add_argument("--format", choices=("table", "json"), default="table")
+    p_sc.add_argument("--threshold", type=int, default=DEFAULT_THRESHOLD)
+
     # mcp — run as an MCP server.
     sub.add_parser("mcp", help="Run the MCP server (stdio JSON-RPC).")
 
@@ -684,6 +691,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.command == "feeds":
         from . import feeds as feedmod
         return feedmod.run_cli(args)
+
+    if args.command == "self-check":
+        from .selfcheck import run_self_check, render_table
+        report = run_self_check(threshold=args.threshold)
+        if args.format == "json":
+            print(json.dumps(report, indent=2, sort_keys=False))
+        else:
+            print(render_table(report))
+        return 0 if report["healthy"] else 2
 
     if args.command == "mcp":
         from .mcp_server import run_mcp_server

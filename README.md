@@ -111,6 +111,7 @@ C2 server fingerprinter — Cobalt Strike, Sliver, Mythic, Havoc, Brute Ratel �
 - ✅ **TLS + behavioral indicators** — JA4 / JA4S / JA4X / JA3 / JA3S / JARM, plus **beacon-interval/jitter cadence**, checksum/encoded **URI regexes**, default **User-Agents**, cert quirks and ports
 - ✅ Output: **table · JSON · SARIF · HTML report · shields.io badge**
 - ✅ **Deploy as detection rules** — generate ready-to-ship **Sigma** (SIEM) and **Suricata** (IDS/IPS) rules for every C2 family straight from the signature DB: `c2detect rules --format suricata`
+- ✅ **Prove your coverage** — `c2detect self-check` scans every bundled scenario and reports detection coverage (**14/14 malicious detected, 0 false-positives on the benign baseline**), so you can trust the DB and catch regressions in CI
 - ✅ **Reusable GitHub Action** (`uses: cognis-digital/c2detect@main`) — comments findings on PRs, fails CI on `--fail-on`
 - ✅ **Opt-in AI mode** (`--ai`) over your local Cognis fleet — **off by default**, deterministic without it
 - ✅ Runs on Linux/macOS/Windows · Docker · devcontainer · MCP server
@@ -215,6 +216,21 @@ grounded in the documented defaults so they genuinely fire:
 
 Plus the original `01-*`/`02-*`/`03-*` basics, mixed-frameworks, behavioral, and
 benign-baseline (false-positive) scenarios.
+
+**Don't take our word for it — run the coverage self-check:**
+
+```bash
+c2detect self-check
+# ...
+#   malicious detected : 14/14
+#   benign clean       : 1/1
+#   frameworks exercised: 8/21 in DB
+#   status             : HEALTHY
+```
+
+`self-check` scans every bundled scenario, confirms each malicious one fires and
+the benign baseline stays quiet, and exits non-zero if coverage regresses — drop
+it straight into CI. `--format json` for machine-readable coverage.
 
 <div align="right"><a href="#top">↑ back to top</a></div>
 

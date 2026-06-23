@@ -22,3 +22,6 @@ jobs:
           else
             echo "no tests present — skipping"
           fi
+      - name: Coverage self-check (must stay HEALTHY)
+        shell: bash
+        run: python -m c2detect self-check
