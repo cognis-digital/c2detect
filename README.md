@@ -24,10 +24,49 @@ c2detect scan .            # → prioritized findings in seconds
 <!-- cognis:example:start -->
 ## 🔎 Example output
 
-Real output from the bundled demo scenarios — **no setup, no live targets, runs offline:**
+Real, reproducible output from the tool — runs offline:
 
 ```console
-$ c2detect self-check
+$ c2detect-emit --version
+c2detect 1.4.0
+```
+
+```console
+$ c2detect-emit --help
+usage: c2detect [-h] [--version]
+                {scan,match,db,rules,feeds,correlate,probe,self-check,mcp} ...
+
+Fingerprint-match TLS/network observations against a bundled database of known
+C2 frameworks (JA4/JARM/cert/URI/port indicators). Defensive triage only.
+
+positional arguments:
+  {scan,match,db,rules,feeds,correlate,probe,self-check,mcp}
+    scan                Scan JSON observation files / telemetry text / dirs /
+                        stdin.
+    match               Match explicit indicators (--ja4/--jarm/--port/...).
+    db                  List the bundled C2 signature database.
+    rules               Generate Sigma / Suricata detection rules from the
+                        signature DB.
+    feeds               List/update/get the live abuse.ch Feodo-C2 + SSLBL
+                        threat-intel feeds c2detect consumes (keyless; cached;
+                        offline re-serve).
+    correlate           Cluster many observations into shared-infrastructure
+                        campaigns (same JARM/JA4S/cert across hosts = one
+                        operator's estate).
+    probe               AUTHORIZED ACTIVE: TLS-fingerprint a consented
+                        host:port in scope (default OFF; needs --authorized +
+                        --target-allowlist + rate limit).
+    self-check          Scan bundled demo scenarios and report C2 detection
+                        coverage.
+    mcp                 Run the MCP server (stdio JSON-RPC).
+
+options:
+  -h, --help            show this help message and exit
+  --version             show program's version number and exit
+```
+
+```console
+$ c2detect-emit self-check
 c2detect self-check — bundled scenario coverage
 ================================================
   [DETECT    ] 01-basic                           Cobalt Strike
@@ -54,10 +93,8 @@ c2detect self-check — bundled scenario coverage
   status             : HEALTHY
 ```
 
-Inspect the bundled C2 signature database:
-
 ```console
-$ c2detect db
+$ c2detect-emit db
 FAMILY                            SEV       INDICATORS
 ------------------------------------------------------
 Brute Ratel C4                    critical  ja3:1, jarm:1, uri:3, cert_quirk:2, port:2
@@ -74,10 +111,19 @@ Pupy RAT                          high      ja3:1, uri:2, cert_quirk:2, port:3
 SILENTTRINITY                     high      uri:3, http_banner:1, beacon:1, port:3
 Sliver                            high      ja4:1, ja4x:1, jarm:1, uri:5, cert_quirk:2, beacon:1, port:3
 Caldera (MITRE)                   medium    uri:4, http_banner:1, beacon:1, port:5
-…
+Deimos C2                         medium    uri:3, http_banner:1, port:2
+Koadic                            medium    uri:3, user_agent:1, port:3
+Merlin                            medium    uri:2, http_banner:1, cert_quirk:1, port:1
+NimPlant                          medium    uri:3, http_banner:1, user_agent:1, beacon:1, port:2
+Villain                           medium    uri:3, http_banner:2, user_agent:1, port:3
+Generic Beaconing Heuristic       low       beacon:1, port:6
+Generic Self-Signed C2 Heuristic  low       cert_quirk:4, port:5
+
+21 families in bundled signature DB.
 ```
 
-> Every example above is real output from `c2detect` running on bundled fixtures — reproduce it with `pip install cognis-c2detect && c2detect self-check`.
+> Blocks above are real `c2detect` output — reproduce them from a clone.
+
 <!-- cognis:example:end -->
 
 ## Usage — step by step

@@ -1,0 +1,26 @@
+$ c2detect-emit self-check
+
+c2detect self-check — bundled scenario coverage
+================================================
+  [DETECT    ] 01-basic                           Cobalt Strike
+  [DETECT    ] 01-cobalt-strike-network           Cobalt Strike
+  [DETECT    ] 02-deep                            Cobalt Strike
+  [DETECT    ] 02-mixed-frameworks                Brute Ratel C4, Mythic, Sliver
+  [DETECT    ] 03-behavioral                      Cobalt Strike
+  [CLEAN     ] 03-benign-baseline                 (quiet)
+  [DETECT    ] 04-sliver-mtls                     Cobalt Strike, Sliver
+  [DETECT    ] 05-havoc-demon                     Havoc
+  [DETECT    ] 06-mythic-agent                    Mythic
+  [DETECT    ] 07-brute-ratel                     Brute Ratel C4
+  [DETECT    ] 08-adaptixc2-teamserver            AdaptixC2
+  [DETECT    ] 09-metasploit-meterpreter          Metasploit / Meterpreter
+  [DETECT    ] 10-empire-windows                  PowerShell Empire
+  [DETECT    ] 11-multi-framework-incident        AdaptixC2, Cobalt Strike, Havoc, Sliver
+  [DETECT    ] 12-threat-hunt-jarm-sweep          Cobalt Strike, Sliver
+  [feeds/corr] 13-threat-intel-feeds              (non-signature demo)
+  [DETECT    ] 14-campaign-correlation            Cobalt Strike, Metasploit / Meterpreter
+------------------------------------------------
+  malicious detected : 14/14
+  benign clean       : 1/1
+  frameworks exercised: 8/21 in DB
+  status             : HEALTHY

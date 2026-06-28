@@ -1,0 +1,32 @@
+$ c2detect-emit --help
+
+usage: c2detect [-h] [--version]
+                {scan,match,db,rules,feeds,correlate,probe,self-check,mcp} ...
+
+Fingerprint-match TLS/network observations against a bundled database of known
+C2 frameworks (JA4/JARM/cert/URI/port indicators). Defensive triage only.
+
+positional arguments:
+  {scan,match,db,rules,feeds,correlate,probe,self-check,mcp}
+    scan                Scan JSON observation files / telemetry text / dirs /
+                        stdin.
+    match               Match explicit indicators (--ja4/--jarm/--port/...).
+    db                  List the bundled C2 signature database.
+    rules               Generate Sigma / Suricata detection rules from the
+                        signature DB.
+    feeds               List/update/get the live abuse.ch Feodo-C2 + SSLBL
+                        threat-intel feeds c2detect consumes (keyless; cached;
+                        offline re-serve).
+    correlate           Cluster many observations into shared-infrastructure
+                        campaigns (same JARM/JA4S/cert across hosts = one
+                        operator's estate).
+    probe               AUTHORIZED ACTIVE: TLS-fingerprint a consented
+                        host:port in scope (default OFF; needs --authorized +
+                        --target-allowlist + rate limit).
+    self-check          Scan bundled demo scenarios and report C2 detection
+                        coverage.
+    mcp                 Run the MCP server (stdio JSON-RPC).
+
+options:
+  -h, --help            show this help message and exit
+  --version             show program's version number and exit

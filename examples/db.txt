@@ -1,0 +1,27 @@
+$ c2detect-emit db
+
+FAMILY                            SEV       INDICATORS
+------------------------------------------------------
+Brute Ratel C4                    critical  ja3:1, jarm:1, uri:3, cert_quirk:2, port:2
+Cobalt Strike                     critical  ja4s:1, ja3:1, ja3s:1, jarm:1, uri:5, uri_regex:1, http_banner:2, user_agent:1, cert_quirk:3, beacon:1, port:3
+Metasploit / Meterpreter          critical  ja3:1, jarm:1, uri:3, cert_quirk:2, port:3
+AdaptixC2                         high      uri:3, http_banner:4, cert_quirk:1, port:4
+Covenant                          high      jarm:1, uri:3, http_banner:1, cert_quirk:1, port:3
+Godzilla WebShell                 high      uri:3, uri_regex:1, cert_quirk:1, port:3
+Havoc                             high      jarm:1, uri:3, http_banner:1, port:3
+Mythic                            high      jarm:1, uri:2, http_banner:1, port:3
+PoshC2                            high      uri:4, cert_quirk:2, port:2
+PowerShell Empire                 high      ja3:1, uri:3, http_banner:1, port:3
+Pupy RAT                          high      ja3:1, uri:2, cert_quirk:2, port:3
+SILENTTRINITY                     high      uri:3, http_banner:1, beacon:1, port:3
+Sliver                            high      ja4:1, ja4x:1, jarm:1, uri:5, cert_quirk:2, beacon:1, port:3
+Caldera (MITRE)                   medium    uri:4, http_banner:1, beacon:1, port:5
+Deimos C2                         medium    uri:3, http_banner:1, port:2
+Koadic                            medium    uri:3, user_agent:1, port:3
+Merlin                            medium    uri:2, http_banner:1, cert_quirk:1, port:1
+NimPlant                          medium    uri:3, http_banner:1, user_agent:1, beacon:1, port:2
+Villain                           medium    uri:3, http_banner:2, user_agent:1, port:3
+Generic Beaconing Heuristic       low       beacon:1, port:6
+Generic Self-Signed C2 Heuristic  low       cert_quirk:4, port:5
+
+21 families in bundled signature DB.

@@ -1,0 +1,3 @@
+$ c2detect-emit --version
+
+c2detect 1.4.0
