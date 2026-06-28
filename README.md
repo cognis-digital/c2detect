@@ -20,6 +20,66 @@ pip install cognis-c2detect
 c2detect scan .            # → prioritized findings in seconds
 ```
 
+
+<!-- cognis:example:start -->
+## 🔎 Example output
+
+Real output from the bundled demo scenarios — **no setup, no live targets, runs offline:**
+
+```console
+$ c2detect self-check
+c2detect self-check — bundled scenario coverage
+================================================
+  [DETECT    ] 01-basic                           Cobalt Strike
+  [DETECT    ] 01-cobalt-strike-network           Cobalt Strike
+  [DETECT    ] 02-deep                            Cobalt Strike
+  [DETECT    ] 02-mixed-frameworks                Brute Ratel C4, Mythic, Sliver
+  [DETECT    ] 03-behavioral                      Cobalt Strike
+  [CLEAN     ] 03-benign-baseline                 (quiet)
+  [DETECT    ] 04-sliver-mtls                     Cobalt Strike, Sliver
+  [DETECT    ] 05-havoc-demon                     Havoc
+  [DETECT    ] 06-mythic-agent                    Mythic
+  [DETECT    ] 07-brute-ratel                     Brute Ratel C4
+  [DETECT    ] 08-adaptixc2-teamserver            AdaptixC2
+  [DETECT    ] 09-metasploit-meterpreter          Metasploit / Meterpreter
+  [DETECT    ] 10-empire-windows                  PowerShell Empire
+  [DETECT    ] 11-multi-framework-incident        AdaptixC2, Cobalt Strike, Havoc, Sliver
+  [DETECT    ] 12-threat-hunt-jarm-sweep          Cobalt Strike, Sliver
+  [feeds/corr] 13-threat-intel-feeds              (non-signature demo)
+  [DETECT    ] 14-campaign-correlation            Cobalt Strike, Metasploit / Meterpreter
+------------------------------------------------
+  malicious detected : 14/14
+  benign clean       : 1/1
+  frameworks exercised: 8/21 in DB
+  status             : HEALTHY
+```
+
+Inspect the bundled C2 signature database:
+
+```console
+$ c2detect db
+FAMILY                            SEV       INDICATORS
+------------------------------------------------------
+Brute Ratel C4                    critical  ja3:1, jarm:1, uri:3, cert_quirk:2, port:2
+Cobalt Strike                     critical  ja4s:1, ja3:1, ja3s:1, jarm:1, uri:5, uri_regex:1, http_banner:2, user_agent:1, cert_quirk:3, beacon:1, port:3
+Metasploit / Meterpreter          critical  ja3:1, jarm:1, uri:3, cert_quirk:2, port:3
+AdaptixC2                         high      uri:3, http_banner:4, cert_quirk:1, port:4
+Covenant                          high      jarm:1, uri:3, http_banner:1, cert_quirk:1, port:3
+Godzilla WebShell                 high      uri:3, uri_regex:1, cert_quirk:1, port:3
+Havoc                             high      jarm:1, uri:3, http_banner:1, port:3
+Mythic                            high      jarm:1, uri:2, http_banner:1, port:3
+PoshC2                            high      uri:4, cert_quirk:2, port:2
+PowerShell Empire                 high      ja3:1, uri:3, http_banner:1, port:3
+Pupy RAT                          high      ja3:1, uri:2, cert_quirk:2, port:3
+SILENTTRINITY                     high      uri:3, http_banner:1, beacon:1, port:3
+Sliver                            high      ja4:1, ja4x:1, jarm:1, uri:5, cert_quirk:2, beacon:1, port:3
+Caldera (MITRE)                   medium    uri:4, http_banner:1, beacon:1, port:5
+…
+```
+
+> Every example above is real output from `c2detect` running on bundled fixtures — reproduce it with `pip install cognis-c2detect && c2detect self-check`.
+<!-- cognis:example:end -->
+
 ## Usage — step by step
 
 `c2detect` is defensive C2-infrastructure triage: it scans telemetry/observation records against a bundled signature DB and flags beaconing, suspicious TLS fingerprints, and staging URIs. **It is passive by default** — `scan`/`match`/`correlate`/`db`/`rules` read input you provide and make no network calls (the optional `--feeds` only pulls public abuse.ch intel feeds, which can run fully offline from cache). A separate, **opt-in and authorization-gated** active probe (`c2detect probe`) can TLS-fingerprint a consented host you are authorized to assess — see [Passive vs. active](#passive-vs-active).
