@@ -78,6 +78,11 @@ def run_self_check(
             sub = os.path.join(demos_dir, name)
             if not os.path.isdir(sub):
                 continue
+            # Skip non-scenario dirs (e.g. __pycache__, dotfiles) so running the
+            # Python demos never pollutes the coverage report. Real scenarios are
+            # the numbered NN-* directories.
+            if name.startswith((".", "_")):
+                continue
             fams: set[str] = set()
             for fn in sorted(os.listdir(sub)):
                 if os.path.splitext(fn)[1].lower() not in _DEMO_EXT:

@@ -199,7 +199,7 @@ Generic Self-Signed C2 Heuristic  low       cert_quirk:4, port:5
 
 ## Contents
 
-- [Why c2detect?](#why) · [Passive vs. active](#passive-vs-active) · [Features](#features) · [Quick start](#quick-start) · [Example](#example) · [Detection depth](#detection-depth) · [Campaign correlation](#correlate) · [GitHub Action](#github-action) · [Status badge](#status-badge) · [HTML report](#html-report) · [AI mode](#ai-mode) · [Architecture](#architecture) · [AI stack](#ai-stack) · [How it compares](#how-it-compares) · [Integrations](#integrations) · [Install anywhere](#install-anywhere) · [Related](#related) · [Contributing](#contributing)
+- [Why c2detect?](#why) · [Passive vs. active](#passive-vs-active) · [Features](#features) · [Quick start](#quick-start) · [Example](#example) · [Detection depth](#detection-depth) · [Campaign correlation](#correlate) · [Demos](#demos) · [GitHub Action](#github-action) · [Status badge](#status-badge) · [HTML report](#html-report) · [AI mode](#ai-mode) · [Architecture](#architecture) · [AI stack](#ai-stack) · [How it compares](#how-it-compares) · [Integrations](#integrations) · [Install anywhere](#install-anywhere) · [Related](#related) · [Contributing](#contributing)
 
 <a name="why"></a>
 ## Why c2detect?
@@ -517,14 +517,48 @@ pre-seeded snapshot you can run offline immediately.
 
 <div align="right"><a href="#top">↑ back to top</a></div>
 
+<a name="demos"></a>
+## Demos
+
+Five runnable, audience-specific scenarios in [`demos/`](demos/) — each loads a
+real bundled telemetry fixture, runs the actual engine **fully offline**, prints
+narrated output, and exits 0 (so they double as smoke tests):
+
+```bash
+PYTHONUTF8=1 python demos/run_all.py                 # all five, end to end
+PYTHONUTF8=1 python demos/05_campaign_correlation.py # or just one
+```
+
+| # | Scenario | Audience | What it shows |
+|---|----------|----------|---------------|
+| 1 | [`01_soc_triage.py`](demos/01_soc_triage.py) | **SOC / blue team** | Prioritize a 5-host JARM egress sweep — 2 C2 hosts pulled out, 3 benign CDNs cleared, ranked for escalation |
+| 2 | [`02_threat_intel_feeds.py`](demos/02_threat_intel_feeds.py) | **Threat intel** | Cross-reference observations against the real abuse.ch Feodo + SSLBL feeds, served from the bundled offline snapshot |
+| 3 | [`03_detection_rules.py`](demos/03_detection_rules.py) | **Detection engineers** | Generate Sigma + Suricata rules from the signature DB; verify deterministic, clash-free SIDs |
+| 4 | [`04_incident_response.py`](demos/04_incident_response.py) | **Incident response / DFIR** | Attribute one intrusion staging 4 frameworks (CS + Sliver + Havoc + AdaptixC2), with the indicators that fired |
+| 5 | [`05_campaign_correlation.py`](demos/05_campaign_correlation.py) | **Threat hunters** | Cluster a week of telemetry into shared-infrastructure campaigns via union-find, pivot evidence inline |
+
+Full write-ups in **[docs/DEMOS.md](docs/DEMOS.md)**.
+
+<div align="right"><a href="#top">↑ back to top</a></div>
+
 <a name="architecture"></a>
 ## Architecture
 
 ```mermaid
 flowchart LR
-  IN[input] --> P[c2detect<br/>analyze + score]
-  P --> OUT[report]
+    in["Telemetry<br/>JSON · JSONL · text · stdin"] --> obs["Observation<br/>ingest"]
+    obs --> score["Matching engine<br/>+ signature DB (21 families)"]
+    score --> res["ScanResult<br/>(ranked matches)"]
+    res --> corr["Correlation<br/>(campaigns)"]
+    res --> rep["Reports<br/>table · JSON · SARIF · HTML · badge"]
+    res -.opt.-> feeds["abuse.ch feeds<br/>(offline-capable)"]
+    score --> rules["Sigma · Suricata<br/>rule generation"]
+    res --> mcp["MCP server"]
+    classDef hot stroke:#6b46c1,stroke-width:3px;
+    class score hot;
 ```
+
+Full component walkthrough with diagrams in **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
 <div align="right"><a href="#top">↑ back to top</a></div>
 

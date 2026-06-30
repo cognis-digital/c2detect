@@ -27,3 +27,20 @@ def test_render_table_is_string():
     out = render_table(run_self_check())
     assert "self-check" in out
     assert "frameworks exercised" in out
+
+
+def test_self_check_ignores_non_scenario_dirs(tmp_path):
+    # A __pycache__ / dotfile dir (e.g. left by running the Python demos) must
+    # never be counted as a scenario or it would show as a phantom MISS.
+    (tmp_path / "__pycache__").mkdir()
+    (tmp_path / "__pycache__" / "x.pyc").write_bytes(b"\x00")
+    (tmp_path / ".hidden").mkdir()
+    (tmp_path / "01-real").mkdir()
+    (tmp_path / "01-real" / "observations.json").write_text(
+        '[{"ip": "1.2.3.4", "port": 50050, '
+        '"jarm": "07d14d16d21d21d07c42d41d00041d24a458a375eef0c576d23a7bab9a9fb1"}]',
+        encoding="utf-8")
+    report = run_self_check(demos_dir=str(tmp_path))
+    names = {s["scenario"] for s in report["scenarios"]}
+    assert names == {"01-real"}
+    assert report["healthy"] is True
