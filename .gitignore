@@ -6,3 +6,5 @@ build/
 .pytest_cache/
 *.html
 !demos/**
+
+media/walkthrough.mp4
