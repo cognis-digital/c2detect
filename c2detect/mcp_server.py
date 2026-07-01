@@ -49,6 +49,21 @@ _INPUT_SCHEMA: dict[str, Any] = {
 }
 
 
+def _coerce_threshold(value: Any, default: int = 35) -> int:
+    """Coerce an MCP-supplied threshold to an int, honoring an explicit 0.
+
+    A bare ``x or default`` would silently turn a deliberate ``threshold: 0``
+    (report everything) into the default 35 because 0 is falsy. Distinguish a
+    missing/None/unparseable value (use the default) from a real 0.
+    """
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def scan(payload: Any) -> dict[str, Any]:
     """Tool entry point. Accepts a dict / JSON string / free text and returns
     a JSON-able findings document."""
@@ -63,7 +78,7 @@ def scan(payload: Any) -> dict[str, Any]:
         else:
             results.append(scan_observation(observation_from_text(payload), threshold))
     elif isinstance(payload, dict):
-        threshold = int(payload.get("threshold", 35) or 35)
+        threshold = _coerce_threshold(payload.get("threshold"))
         if isinstance(payload.get("observations"), list):
             for rec in payload["observations"]:
                 if isinstance(rec, dict):
@@ -103,7 +118,7 @@ def correlate_tool(payload: Any) -> dict[str, Any]:
     elif isinstance(payload, list):
         recs = [r for r in payload if isinstance(r, dict)]
     elif isinstance(payload, dict):
-        threshold = int(payload.get("threshold", 35) or 35)
+        threshold = _coerce_threshold(payload.get("threshold"))
         if isinstance(payload.get("observations"), list):
             recs = [r for r in payload["observations"] if isinstance(r, dict)]
         elif "host" in payload or "jarm" in payload or "ja4" in payload:
