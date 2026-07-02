@@ -130,6 +130,78 @@ def correlate_tool(payload: Any) -> dict[str, Any]:
     return to_json(campaigns)
 
 
+def _records_from_payload(payload: Any) -> tuple[list[dict], int]:
+    """Shared payload→(records, threshold) coercion for the new tools."""
+    threshold = 35
+    recs: list[dict] = []
+    if isinstance(payload, str):
+        recs = load_records(payload) or []
+    elif isinstance(payload, list):
+        recs = [r for r in payload if isinstance(r, dict)]
+    elif isinstance(payload, dict):
+        threshold = _coerce_threshold(payload.get("threshold"))
+        if isinstance(payload.get("observations"), list):
+            recs = [r for r in payload["observations"] if isinstance(r, dict)]
+        elif any(k in payload for k in ("host", "jarm", "ja4", "ja3", "port")):
+            recs = [payload]
+    return recs, threshold
+
+
+def export_tool(payload: Any) -> dict[str, Any]:
+    """MCP tool: export observations as a STIX 2.1 bundle or MISP event.
+
+    ``format`` in the payload selects ``stix`` (default) or ``misp``. Accepts
+    the same observation shapes as ``scan``.
+    """
+    from .export import to_stix, to_misp
+
+    fmt = "stix"
+    if isinstance(payload, dict):
+        fmt = str(payload.get("format", "stix")).lower()
+    recs, threshold = _records_from_payload(payload)
+    results = [scan_observation(observation_from_record(r), threshold) for r in recs]
+    return to_misp(results) if fmt == "misp" else to_stix(results)
+
+
+def beacon_tool(payload: Any) -> dict[str, Any]:
+    """MCP tool: beacon-cadence analysis from connection timestamps.
+
+    Accepts ``{"timestamps": [..]}`` (epoch seconds), ``{"text": "log blob"}``,
+    or a raw log string. Returns the beacon statistics + verdict.
+    """
+    from .beacon import analyze_timestamps, analyze_text
+
+    dest = ""
+    if isinstance(payload, str):
+        return analyze_text(payload).as_dict()
+    if isinstance(payload, list):
+        return analyze_timestamps(payload).as_dict()
+    if isinstance(payload, dict):
+        dest = str(payload.get("dest", ""))
+        if isinstance(payload.get("timestamps"), list):
+            return analyze_timestamps(payload["timestamps"], dest=dest).as_dict()
+        if isinstance(payload.get("text"), str):
+            return analyze_text(payload["text"], dest=dest).as_dict()
+    return analyze_timestamps([], dest=dest).as_dict()
+
+
+def rules_tool(payload: Any) -> dict[str, Any]:
+    """MCP tool: generate deployable detection rules from the signature DB.
+
+    ``format`` selects sigma | suricata | kql | splunk | eql | yara.
+    """
+    from .rules import generate
+
+    fmt = "sigma"
+    if isinstance(payload, dict):
+        fmt = str(payload.get("format", "sigma")).lower()
+    try:
+        text = generate(fmt)
+    except ValueError as exc:
+        return {"error": str(exc)}
+    return {"format": fmt, "rules": text}
+
+
 # ---------------------------------------------------------------------------
 # Stdlib JSON-RPC 2.0 / MCP stdio loop (fallback, no third-party deps).
 # ---------------------------------------------------------------------------
@@ -181,6 +253,43 @@ def _handle(msg: dict[str, Any]) -> None:
                         "operator's estate). Defensive triage only."),
                     "inputSchema": _INPUT_SCHEMA,
                 },
+                {
+                    "name": "export",
+                    "description": (
+                        "Export observations as a STIX 2.1 bundle or MISP event "
+                        "(format: stix|misp) — shareable threat intel with "
+                        "ATT&CK kill-chain phases. Defensive triage only."),
+                    "inputSchema": _INPUT_SCHEMA,
+                },
+                {
+                    "name": "beacon",
+                    "description": (
+                        "Beacon-cadence analysis from raw connection timestamps "
+                        "(mean interval, jitter as coefficient-of-variation, "
+                        "regularity score, verdict). Accepts a 'timestamps' "
+                        "array or a 'text' log blob."),
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "timestamps": {"type": "array",
+                                           "items": {"type": "number"}},
+                            "text": {"type": "string"},
+                            "dest": {"type": "string"},
+                        },
+                        "additionalProperties": True,
+                    },
+                },
+                {
+                    "name": "generate_rules",
+                    "description": (
+                        "Generate deployable detection rules from the signature "
+                        "DB (format: sigma|suricata|kql|splunk|eql|yara)."),
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {"format": {"type": "string"}},
+                        "additionalProperties": True,
+                    },
+                },
             ]
         })
     elif method == "tools/call":
@@ -193,6 +302,12 @@ def _handle(msg: dict[str, Any]) -> None:
                 out = {"families": list_signatures()}
             elif name == "correlate":
                 out = correlate_tool(args)
+            elif name == "export":
+                out = export_tool(args)
+            elif name == "beacon":
+                out = beacon_tool(args)
+            elif name == "generate_rules":
+                out = rules_tool(args)
             else:
                 _error(rid, -32601, f"unknown tool: {name}")
                 return

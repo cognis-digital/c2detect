@@ -40,6 +40,10 @@ SCENARIOS = [
     "18_sigma_per_family",
     "19_correlate_gate",
     "20_air_gap_workflow",
+    "21_beacon_timeseries",
+    "22_stix_misp_export",
+    "23_multi_siem_rules",
+    "24_campaign_analytics",
 ]
 
 
@@ -74,11 +78,11 @@ def test_run_all_executes_every_scenario(capsys):
     assert "All c2detect demo scenarios completed." in out
 
 
-def test_run_all_lists_twenty_scenarios():
-    """run_all and the demo test list must stay in lock-step at 20 scenarios."""
+def test_run_all_lists_all_scenarios():
+    """run_all and the demo test list must stay in lock-step."""
     run_all = importlib.import_module("run_all")
     assert run_all.SCENARIOS == SCENARIOS
-    assert len(SCENARIOS) == 20
+    assert len(SCENARIOS) == 24
 
 
 def test_every_scenario_module_file_exists():

@@ -20,19 +20,25 @@ CORE_CALLABLES = [
     "to_badge", "to_html", "to_sarif", "worst_severity",
     "fails_gate", "fails_gate_with_ai", "merge_ai_findings",
 ]
-RULE_CALLABLES = ["to_sigma", "to_suricata", "generate"]
-CORR_CALLABLES = ["correlate", "correlate_observations"]
+RULE_CALLABLES = ["to_sigma", "to_suricata", "to_kql", "to_splunk",
+                  "to_eql", "to_yara", "generate"]
+CORR_CALLABLES = ["correlate", "correlate_observations",
+                  "campaign_analytics", "analytics"]
 ACTIVE_CALLABLES = ["probe_target", "probe_targets", "jarm_like"]
+EXPORT_CALLABLES = ["to_misp", "to_stix", "signatures_to_stix"]
+BEACON_CALLABLES = ["analyze_timestamps", "analyze_beacon_text",
+                    "parse_timestamps"]
 DATACLASSES = ["Observation", "Signature", "Match", "MatchedIndicator",
                "ScanResult", "ProbeResult", "Campaign", "HostNode",
-               "SharedPivot", "Scope", "RateLimiter"]
+               "SharedPivot", "Scope", "RateLimiter", "BeaconAnalysis"]
 
 
 import pytest
 
 
 @pytest.mark.parametrize("name", CORE_CALLABLES + RULE_CALLABLES
-                         + CORR_CALLABLES + ACTIVE_CALLABLES)
+                         + CORR_CALLABLES + ACTIVE_CALLABLES
+                         + EXPORT_CALLABLES + BEACON_CALLABLES)
 def test_callable_exported(name):
     assert hasattr(c2detect, name), f"missing export: {name}"
     assert callable(getattr(c2detect, name))

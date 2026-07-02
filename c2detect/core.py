@@ -1180,4 +1180,4 @@ footer{{color:#64748b;font-size:12px;margin-top:28px;text-align:center}}
 
 
 TOOL_NAME = "c2detect"
-TOOL_VERSION = "1.4.0"
+TOOL_VERSION = "1.5.0"

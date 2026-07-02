@@ -431,6 +431,79 @@ def to_table(campaigns: list[Campaign]) -> str:
     return "\n".join(lines)
 
 
+def campaign_analytics(campaign: Campaign) -> dict[str, Any]:
+    """Graph-analytics rollup for one campaign — the numbers an IR lead wants.
+
+    Computes, from the campaign's own pivot graph (no new data):
+
+    * ``host_degree`` — how many other hosts each host shares a pivot with. The
+      highest-degree host is the **hub** of the estate (often the shared
+      redirector / team-server) and the best pivot to hunt from first.
+    * ``linchpin_pivot`` — the single heaviest shared pivot value binding the
+      cluster (e.g. one reused cert serial). Rotate/block this and the estate
+      fragments.
+    * ``pivot_class_histogram`` — count of edges carrying each pivot class.
+    * ``density`` — realized edges / possible edges (clique-ness of the cluster).
+    """
+    hosts = campaign.hosts
+    n = len(hosts)
+    degree: dict[str, int] = {h: 0 for h in hosts}
+    seen_pairs: set[tuple[str, str]] = set()
+    class_hist: dict[str, int] = {}
+    heaviest: SharedPivot | None = None
+
+    for (a, b, ps) in campaign.edges:
+        pair = tuple(sorted((a, b)))
+        if pair not in seen_pairs:
+            seen_pairs.add(pair)
+            degree[a] = degree.get(a, 0) + 1
+            degree[b] = degree.get(b, 0) + 1
+        classes_here: set[str] = set()
+        for p in ps:
+            classes_here.add(p.klass)
+            if heaviest is None or p.weight > heaviest.weight:
+                heaviest = p
+        for k in classes_here:
+            class_hist[k] = class_hist.get(k, 0) + 1
+
+    possible = n * (n - 1) // 2 if n > 1 else 0
+    density = round(len(seen_pairs) / possible, 4) if possible else 0.0
+    hub = max(degree.items(), key=lambda kv: kv[1])[0] if degree else ""
+
+    return {
+        "campaign_id": campaign.cid,
+        "size": campaign.size,
+        "edges": len(seen_pairs),
+        "density": density,
+        "hub_host": hub,
+        "host_degree": dict(sorted(degree.items(),
+                                   key=lambda kv: (-kv[1], kv[0]))),
+        "linchpin_pivot": (heaviest.as_dict() if heaviest else None),
+        "pivot_class_histogram": dict(
+            sorted(class_hist.items(),
+                   key=lambda kv: -PIVOT_WEIGHTS.get(kv[0], 0))),
+        "families": campaign.families,
+        "attack_techniques": ["T1071.001", "T1071"],  # app-layer C2 (web)
+    }
+
+
+def analytics(campaigns: list[Campaign]) -> dict[str, Any]:
+    """Portfolio-level analytics across all campaigns (batch/CI rollup)."""
+    per = [campaign_analytics(c) for c in campaigns]
+    all_families: dict[str, int] = {}
+    for c in campaigns:
+        for f in c.families:
+            all_families[f] = all_families.get(f, 0) + 1
+    return {
+        "campaign_count": len(campaigns),
+        "host_count": sum(c.size for c in campaigns),
+        "largest_campaign": max((c.size for c in campaigns), default=0),
+        "family_prevalence": dict(
+            sorted(all_families.items(), key=lambda kv: (-kv[1], kv[0]))),
+        "campaigns": per,
+    }
+
+
 def to_dot(campaigns: list[Campaign]) -> str:
     """Graphviz DOT of the pivot graph — one subgraph per campaign.
 
