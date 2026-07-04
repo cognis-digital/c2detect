@@ -33,6 +33,10 @@ SCENARIOS = [
     "18_sigma_per_family",
     "19_correlate_gate",
     "20_air_gap_workflow",
+    "21_beacon_timeseries",
+    "22_stix_misp_export",
+    "23_multi_siem_rules",
+    "24_campaign_analytics",
 ]
 
 

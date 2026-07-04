@@ -120,7 +120,8 @@ class TestJsonRpc:
     def test_tools_list(self, monkeypatch):
         resp = _call(monkeypatch, {"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
         names = {t["name"] for t in resp["result"]["tools"]}
-        assert {"scan", "list_signatures", "correlate"} <= names
+        assert {"scan", "list_signatures", "correlate",
+                "export", "beacon", "generate_rules"} <= names
 
     def test_tools_call_scan(self, monkeypatch):
         resp = _call(monkeypatch, {

@@ -37,31 +37,35 @@ Real, reproducible output from the tool — runs offline:
 
 ```console
 $ c2detect-emit --version
-c2detect 1.4.0
+c2detect 1.5.0
 ```
 
 ```console
 $ c2detect-emit --help
 usage: c2detect [-h] [--version]
-                {scan,match,db,rules,feeds,correlate,probe,self-check,mcp} ...
+                {scan,match,db,rules,feeds,correlate,export,beacon,probe,self-check,mcp} ...
 
 Fingerprint-match TLS/network observations against a bundled database of known
 C2 frameworks (JA4/JARM/cert/URI/port indicators). Defensive triage only.
 
 positional arguments:
-  {scan,match,db,rules,feeds,correlate,probe,self-check,mcp}
+  {scan,match,db,rules,feeds,correlate,export,beacon,probe,self-check,mcp}
     scan                Scan JSON observation files / telemetry text / dirs /
                         stdin.
     match               Match explicit indicators (--ja4/--jarm/--port/...).
     db                  List the bundled C2 signature database.
-    rules               Generate Sigma / Suricata detection rules from the
-                        signature DB.
+    rules               Generate Sigma / Suricata / KQL / Splunk / Elastic-EQL
+                        / YARA detection rules from the signature DB.
     feeds               List/update/get the live abuse.ch Feodo-C2 + SSLBL
                         threat-intel feeds c2detect consumes (keyless; cached;
                         offline re-serve).
     correlate           Cluster many observations into shared-infrastructure
                         campaigns (same JARM/JA4S/cert across hosts = one
                         operator's estate).
+    export              Export findings (or the whole signature DB) as MISP /
+                        STIX 2.1.
+    beacon              Analyze connection-timestamp cadence for beaconing
+                        (offline).
     probe               AUTHORIZED ACTIVE: TLS-fingerprint a consented
                         host:port in scope (default OFF; needs --authorized +
                         --target-allowlist + rate limit).
@@ -254,15 +258,27 @@ c2detect scan . --fail-on high        # CI gate (non-zero exit)
 
 Don't just scan — **ship the intelligence to your stack.** `c2detect rules`
 turns the bundled signature DB into deployable detection content for every C2
-family, generated from the same high-confidence TLS fingerprints and documented
-defaults the scanner uses.
+family, in **six dialects**, generated from the same high-confidence TLS
+fingerprints and documented defaults the scanner uses.
 
 ```bash
 # Sigma rules for your SIEM (one rule per C2 family, TLS-fingerprint keyed)
-c2detect rules --format sigma -o c2detect.sigma.yml
+c2detect rules --format sigma    -o c2detect.sigma.yml
 
 # Suricata IDS/IPS rules (JA3/JA4 hash + HTTP URI/User-Agent matches)
 c2detect rules --format suricata -o c2detect.rules
+
+# Microsoft Sentinel / Defender KQL hunting queries
+c2detect rules --format kql      -o sentinel_c2.kql
+
+# Splunk SPL correlation searches
+c2detect rules --format splunk   -o c2_correlation.spl
+
+# Elastic EQL (ECS field names)
+c2detect rules --format eql      -o elastic_c2.eql
+
+# YARA rules over C2 config/network strings (memory images, unpacked implants)
+c2detect rules --format yara     -o c2_config.yar
 ```
 
 Example Suricata output:
@@ -276,7 +292,53 @@ alert tls any any -> any any (msg:"C2DETECT Cobalt Strike default JA3"; \
 
 SIDs are deterministic in the private `9.2M` range so they won't clash with
 ET/Talos rule sets. Sigma rules carry stable ids, `attack.command_and_control`
-tags, and per-family `c2detect.family.*` tags. Tune/threshold before production.
+tags, and per-family `c2detect.family.*` tags. KQL/Splunk/EQL queries carry the
+same ATT&CK annotations; YARA rules key on config strings (cert quirks, banners,
+default URIs/UAs) that survive in memory. Tune/threshold before production.
+
+<div align="right"><a href="#top">↑ back to top</a></div>
+
+## Share as threat intel — `c2detect export`
+
+Push detections into a threat-intel platform, an ISAC feed, or a SOAR playbook.
+`c2detect export` renders findings as a **STIX 2.1 bundle** (indicator + malware
+SDOs with ATT&CK kill-chain phases and `indicates` relationships) or a **MISP
+event** (one attribute per indicator, family + ATT&CK tags). Native, zero
+third-party dependencies, deterministic IDs.
+
+```bash
+# STIX 2.1 bundle from a scanned incident
+c2detect export incident.json --format stix -o bundle.json
+
+# MISP event
+c2detect export incident.json --format misp -o event.json
+
+# The whole signature DB as a standalone, shareable STIX C2-fingerprint feed
+c2detect export --db --format stix -o c2_db_feed.json
+```
+
+<div align="right"><a href="#top">↑ back to top</a></div>
+
+## Beacon-cadence analysis — `c2detect beacon`
+
+Attribution needs a beacon interval and jitter — but where do they come from?
+`c2detect beacon` derives them from the **raw connection timestamps** in a Zeek
+`conn.log`, proxy log, or EDR export (epoch seconds or ISO-8601). It reports the
+mean/median interval, jitter as a scale-free coefficient of variation, a
+regularity score, and a plain verdict — `beacon`, `jittered-beacon`,
+`irregular`, or `insufficient-data`.
+
+```bash
+c2detect beacon conn_timestamps.log --dest 45.77.65.211:443
+#   mean=60.0s  median=60.0s  jitter (CV)=0.07  regularity=0.93
+#   VERDICT: BEACON  [hunt this host]
+
+# CI/hunt gate: exit non-zero if a series is judged a beacon
+c2detect beacon suspicious.log --fail-on-beacon
+```
+
+Fold the result straight back into `c2detect match --beacon-interval … --jitter …`
+to attribute the cadence to a family.
 
 <div align="right"><a href="#top">↑ back to top</a></div>
 
@@ -379,11 +441,17 @@ c2detect: 2 campaign(s) clustering 5 host(s) by shared C2 infrastructure.
 
 ```bash
 c2detect correlate obs.json --format json                 # machine-readable campaigns + edges
+c2detect correlate obs.json --format json --analytics     # + hub host, density, linchpin pivot, ATT&CK
 c2detect correlate obs.json --format dot | dot -Tsvg -o g.svg   # Graphviz pivot graph
 c2detect correlate obs.json --fail-on critical            # CI gate (exit 2)
 c2detect correlate obs.json --edge-floor 38               # only JARM-class pivots link
 c2detect correlate obs.json --include-singletons          # full inventory incl. lone hosts
 ```
+
+`--analytics` adds graph metrics per campaign: the **hub host** (highest degree —
+often the shared redirector/team-server, the pivot to hunt from first), the
+cluster **density**, and the **linchpin pivot** (the single heaviest shared value
+— block/rotate it and the estate fragments).
 
 It does **not** attribute to a named actor and invents nothing — every reported
 pivot is a value two observations actually share. Full threat context, the

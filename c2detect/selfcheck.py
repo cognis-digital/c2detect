@@ -54,12 +54,14 @@ def _is_benign(name: str) -> bool:
 
 def _is_feature(name: str) -> bool:
     """Scenarios that demonstrate a *non-signature* feature (live threat-intel
-    feeds, campaign correlation) — their detection comes from `--feeds` /
-    `correlate`, not the passive signature DB, so the signature self-check
-    reports them as informational rather than pass/fail."""
+    feeds, campaign correlation, beacon-cadence timeseries) — their detection
+    comes from `--feeds` / `correlate` / `beacon`, not the passive signature DB,
+    so the signature self-check reports them as informational rather than
+    pass/fail."""
     n = name.lower()
     return ("feed" in n or "intel" in n
-            or "correlat" in n or "campaign" in n)
+            or "correlat" in n or "campaign" in n
+            or "beacon" in n or "timeseries" in n)
 
 
 def run_self_check(

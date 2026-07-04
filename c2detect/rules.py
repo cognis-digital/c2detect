@@ -34,6 +34,18 @@ def _slug(family: str) -> str:
     return "".join(c if c.isalnum() else "_" for c in family).strip("_")
 
 
+def _dq(value: str) -> str:
+    """Escape a value for embedding in a double-quoted string literal.
+
+    Doubles backslashes then escapes double-quotes, so a signature indicator
+    that happens to contain ``"`` or ``\\`` (user-extended DBs, future entries)
+    can never break out of — or inject into — the emitted KQL / SPL / EQL rule
+    string. The bundled defaults contain none today; this keeps the generators
+    safe against any custom DB passed to them.
+    """
+    return str(value).replace("\\", "\\\\").replace('"', '\\"')
+
+
 def _stable_uuid(seed: str) -> str:
     h = hashlib.md5(seed.encode("utf-8")).hexdigest()
     return f"{h[:8]}-{h[8:12]}-{h[12:16]}-{h[16:20]}-{h[20:32]}"
@@ -165,10 +177,261 @@ def to_suricata(sigs: Iterable[Signature] | None = None) -> str:
     return "\n".join(header + out)
 
 
+# --------------------------------------------------------------------------- #
+# Microsoft Sentinel / Defender KQL
+# --------------------------------------------------------------------------- #
+def kql_query(sig: Signature) -> str:
+    """Render one Microsoft Sentinel / Defender **KQL** hunting query.
+
+    Keys on the strongest available network indicators. TLS-fingerprint families
+    query a ``VPNSentinel``-agnostic union of common TLS/network tables; URI /
+    user-agent-only families query proxy/HTTP logs. Output is a self-documenting
+    KQL block (comment header + ``let`` indicator sets + a ``union`` search).
+    """
+    fam = sig.family
+    slug = _slug(fam)
+    lets: list[str] = []
+    where_terms: list[str] = []
+
+    def _let(name: str, values: Iterable[str]) -> None:
+        vals = ", ".join(f'"{_dq(v)}"' for v in values)
+        lets.append(f'let {name} = dynamic([{vals}]);')
+
+    if sig.ja3:
+        _let(f"{slug}_ja3", sig.ja3)
+        where_terms.append(f"Ja3Hash in ({slug}_ja3)")
+    if sig.ja3s:
+        _let(f"{slug}_ja3s", sig.ja3s)
+        where_terms.append(f"Ja3sHash in ({slug}_ja3s)")
+    if sig.ja4:
+        _let(f"{slug}_ja4", sig.ja4)
+        where_terms.append(f"Ja4 in ({slug}_ja4)")
+    if sig.jarm:
+        _let(f"{slug}_jarm", sig.jarm)
+        where_terms.append(f"Jarm in ({slug}_jarm)")
+    if sig.user_agents:
+        _let(f"{slug}_ua", sig.user_agents)
+        where_terms.append(f"UserAgent has_any ({slug}_ua)")
+    distinctive_uris = [u for u in sig.uris if len(u) >= 5]
+    if distinctive_uris:
+        _let(f"{slug}_uri", distinctive_uris)
+        where_terms.append(f"UrlPath has_any ({slug}_uri)")
+
+    if not where_terms:
+        return ""
+
+    header = [
+        f"// C2DETECT — {fam} default network fingerprint",
+        f"// {sig.description or fam}",
+        f"// severity: {sig.severity}  |  ATT&CK: {', '.join(_ATTACK_TAGS)}",
+        f"// source: github.com/cognis-digital/c2detect (generated)",
+    ]
+    body = "\n".join(lets)
+    predicate = "\n    or ".join(where_terms)
+    query = (
+        f"{body}\n"
+        f"union isfuzzy=true DeviceNetworkEvents, CommonSecurityLog, Zeek_ssl_CL\n"
+        f"| where {predicate}\n"
+        f"| extend C2Family = \"{_dq(fam)}\", C2Severity = \"{_dq(sig.severity)}\"\n"
+        f"| project TimeGenerated, C2Family, C2Severity, "
+        f"SrcIp = column_ifexists(\"SourceIP\", \"\"), "
+        f"DstIp = column_ifexists(\"DestinationIP\", \"\")"
+    )
+    return "\n".join(header) + "\n" + query + "\n"
+
+
+def to_kql(sigs: Iterable[Signature] | None = None) -> str:
+    """Render the whole DB as a set of Microsoft Sentinel/Defender KQL queries."""
+    sigs = tuple(sigs) if sigs is not None else _default_signatures()
+    header = [
+        "// C2DETECT — generated Microsoft Sentinel / Defender KQL hunting queries",
+        "// Defensive detection of documented default C2 network fingerprints.",
+        "// Each query is independent; adapt table/column names to your schema.",
+        "",
+    ]
+    blocks = [q for q in (kql_query(s) for s in sigs) if q]
+    return "\n".join(header) + ("\n\n".join(blocks))
+
+
+# --------------------------------------------------------------------------- #
+# Splunk SPL
+# --------------------------------------------------------------------------- #
+def splunk_search(sig: Signature) -> str:
+    """Render one Splunk **SPL** correlation search for a single C2 family."""
+    fam = sig.family
+    clauses: list[str] = []
+    if sig.ja3:
+        clauses.append("(" + " OR ".join(f'ja3="{_dq(v)}"' for v in sig.ja3) + ")")
+    if sig.ja3s:
+        clauses.append("(" + " OR ".join(f'ja3s="{_dq(v)}"' for v in sig.ja3s) + ")")
+    if sig.ja4:
+        clauses.append("(" + " OR ".join(f'ja4="{_dq(v)}"' for v in sig.ja4) + ")")
+    if sig.jarm:
+        clauses.append("(" + " OR ".join(f'jarm="{_dq(v)}"' for v in sig.jarm) + ")")
+    if sig.user_agents:
+        clauses.append("(" + " OR ".join(
+            f'http_user_agent="*{_dq(v)}*"' for v in sig.user_agents) + ")")
+    distinctive_uris = [u for u in sig.uris if len(u) >= 5]
+    if distinctive_uris:
+        clauses.append("(" + " OR ".join(
+            f'uri_path="*{_dq(u)}*"' for u in distinctive_uris) + ")")
+    if not clauses:
+        return ""
+    predicate = " OR ".join(clauses)
+    lines = [
+        f"# C2DETECT — {fam} ({sig.severity}) | {', '.join(_ATTACK_TAGS)}",
+        f"# {sig.description or fam}",
+        f'search {predicate}',
+        f'| eval c2_family="{_dq(fam)}", c2_severity="{_dq(sig.severity)}"',
+        "| stats count min(_time) as first_seen max(_time) as last_seen "
+        "by src_ip dest_ip c2_family c2_severity",
+        "| sort - count",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def to_splunk(sigs: Iterable[Signature] | None = None) -> str:
+    """Render the whole DB as a set of Splunk SPL correlation searches."""
+    sigs = tuple(sigs) if sigs is not None else _default_signatures()
+    header = [
+        "# C2DETECT — generated Splunk SPL correlation searches",
+        "# Defensive detection of documented default C2 fingerprints.",
+        "# Field names assume a normalized TLS/HTTP source; map to your CIM.",
+        "",
+    ]
+    blocks = [s for s in (splunk_search(x) for x in sigs) if s]
+    return "\n".join(header) + "\n".join(blocks)
+
+
+# --------------------------------------------------------------------------- #
+# Elastic EQL
+# --------------------------------------------------------------------------- #
+def eql_query(sig: Signature) -> str:
+    """Render one Elastic **EQL** sequence/network query for a C2 family."""
+    fam = sig.family
+    terms: list[str] = []
+    if sig.ja3:
+        terms.append("tls.client.ja3 in (" +
+                     ", ".join(f'"{_dq(v)}"' for v in sig.ja3) + ")")
+    if sig.ja3s:
+        terms.append("tls.server.ja3s in (" +
+                     ", ".join(f'"{_dq(v)}"' for v in sig.ja3s) + ")")
+    if sig.ja4:
+        terms.append("tls.client.ja4 in (" +
+                     ", ".join(f'"{_dq(v)}"' for v in sig.ja4) + ")")
+    if sig.jarm:
+        terms.append("tls.server.jarm in (" +
+                     ", ".join(f'"{_dq(v)}"' for v in sig.jarm) + ")")
+    if sig.user_agents:
+        terms.append("(" + " or ".join(
+            f'user_agent.original : "*{_dq(v)}*"' for v in sig.user_agents) + ")")
+    distinctive_uris = [u for u in sig.uris if len(u) >= 5]
+    if distinctive_uris:
+        terms.append("(" + " or ".join(
+            f'url.path : "*{_dq(u)}*"' for u in distinctive_uris) + ")")
+    if not terms:
+        return ""
+    predicate = " or\n    ".join(terms)
+    header = [
+        f"// C2DETECT — {fam} ({sig.severity}) | {', '.join(_ATTACK_TAGS)}",
+        f"// {sig.description or fam}",
+    ]
+    query = (
+        "any where\n    " + predicate
+    )
+    return "\n".join(header) + "\n" + query + "\n"
+
+
+def to_eql(sigs: Iterable[Signature] | None = None) -> str:
+    """Render the whole DB as a set of Elastic EQL queries."""
+    sigs = tuple(sigs) if sigs is not None else _default_signatures()
+    header = [
+        "// C2DETECT — generated Elastic EQL queries (ECS field names)",
+        "// Defensive detection of documented default C2 fingerprints.",
+        "",
+    ]
+    blocks = [q for q in (eql_query(s) for s in sigs) if q]
+    return "\n".join(header) + ("\n".join(blocks))
+
+
+# --------------------------------------------------------------------------- #
+# YARA — network-config / memory string signatures
+# --------------------------------------------------------------------------- #
+def _yara_escape(s: str) -> str:
+    return s.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def yara_rule(sig: Signature) -> str:
+    """Render one **YARA** rule from a family's textual network indicators.
+
+    Uses the documented cert quirks, HTTP banners, default user-agents and long
+    URIs as ASCII string atoms — the kind of strings that survive in a memory
+    image, a captured config, or an unpacked implant. TLS *hashes* are not YARA
+    material, so hash-only families with no textual atoms are skipped.
+    """
+    fam = sig.family
+    atoms: list[tuple[str, str]] = []
+    n = 0
+
+    def _add(prefix: str, values: Iterable[str], min_len: int = 4) -> None:
+        nonlocal n
+        for v in values:
+            if len(v) < min_len:
+                continue
+            atoms.append((f"${prefix}{n}", _yara_escape(v)))
+            n += 1
+
+    _add("q", sig.cert_quirks)
+    _add("b", sig.http_banners)
+    _add("u", sig.user_agents, min_len=6)
+    _add("p", [u for u in sig.uris if len(u) >= 6])
+    if not atoms:
+        return ""
+
+    lines = [f"rule C2DETECT_{_slug(fam)}", "{", "    meta:"]
+    lines.append(f'        description = "C2DETECT — {fam} default config/network strings"')
+    lines.append(f'        severity = "{sig.severity}"')
+    lines.append(f'        attack = "{", ".join(_ATTACK_TAGS)}"')
+    lines.append('        author = "Cognis Digital (generated by c2detect)"')
+    lines.append(f'        date = "{_RULE_DATE}"')
+    if sig.references:
+        lines.append(f'        reference = "{_yara_escape(sig.references[0])}"')
+    lines.append("    strings:")
+    for name, val in atoms:
+        lines.append(f'        {name} = "{val}" ascii wide nocase')
+    lines.append("    condition:")
+    lines.append("        any of them")
+    lines.append("}")
+    return "\n".join(lines) + "\n"
+
+
+def to_yara(sigs: Iterable[Signature] | None = None) -> str:
+    """Render the whole DB as a YARA ruleset of textual C2 config atoms."""
+    sigs = tuple(sigs) if sigs is not None else _default_signatures()
+    header = [
+        "/* C2DETECT — generated YARA rules",
+        "   Defensive detection of documented default C2 config/network strings.",
+        "   Match against memory images, captured configs, unpacked implants. */",
+        "",
+    ]
+    blocks = [r for r in (yara_rule(s) for s in sigs) if r]
+    return "\n".join(header) + "\n".join(blocks)
+
+
+_FORMATS = {
+    "sigma": to_sigma,
+    "suricata": to_suricata,
+    "kql": to_kql,
+    "splunk": to_splunk,
+    "eql": to_eql,
+    "yara": to_yara,
+}
+
+
 def generate(fmt: str, sigs: Iterable[Signature] | None = None) -> str:
     fmt = fmt.lower()
-    if fmt == "sigma":
-        return to_sigma(sigs)
-    if fmt == "suricata":
-        return to_suricata(sigs)
-    raise ValueError(f"unknown rule format: {fmt!r} (use 'sigma' or 'suricata')")
+    fn = _FORMATS.get(fmt)
+    if fn is None:
+        valid = ", ".join(sorted(_FORMATS))
+        raise ValueError(f"unknown rule format: {fmt!r} (use one of: {valid})")
+    return fn(sigs)

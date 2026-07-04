@@ -1,11 +1,15 @@
 """Command-line interface for C2DETECT.
 
 Subcommands:
-  scan   — scan JSON observation files / free-text telemetry / stdin / dirs
-  match  — match explicit indicators passed on the command line
-  db     — list the bundled C2 signature database
-  feeds  — list/update/get the live abuse.ch threat-intel feeds (edge/air-gap)
-  mcp    — run the Model Context Protocol server (stdio JSON-RPC)
+  scan     — scan JSON observation files / free-text telemetry / stdin / dirs
+  match    — match explicit indicators passed on the command line
+  db       — list the bundled C2 signature database
+  rules    — emit Sigma/Suricata/KQL/Splunk/Elastic-EQL/YARA detection rules
+  correlate— cluster many observations into shared-infra campaigns (+analytics)
+  export   — export findings / the DB as MISP event or STIX 2.1 bundle
+  beacon   — beacon-cadence analysis from raw connection timestamps (DFIR)
+  feeds    — list/update/get the live abuse.ch threat-intel feeds (edge/air-gap)
+  mcp      — run the Model Context Protocol server (stdio JSON-RPC)
 
 Output formats: table | json | sarif.  CI gating: --fail-on <severity>.
 Defensive triage only — no network, no active capability.
@@ -252,7 +256,12 @@ def _build_parser() -> argparse.ArgumentParser:
     p_rules = sub.add_parser(
         "rules",
         help="Generate Sigma / Suricata detection rules from the signature DB.")
-    p_rules.add_argument("--format", choices=("sigma", "suricata"), default="sigma")
+    p_rules.add_argument(
+        "--format",
+        choices=("sigma", "suricata", "kql", "splunk", "eql", "yara"),
+        default="sigma",
+        help="sigma | suricata | kql (Sentinel/Defender) | splunk (SPL) | "
+             "eql (Elastic) | yara")
     p_rules.add_argument("-o", "--output", help="write to file instead of stdout")
 
     # feeds — live abuse.ch threat-intel feeds (edge/air-gap deployable).
@@ -300,6 +309,52 @@ def _build_parser() -> argparse.ArgumentParser:
                         choices=tuple(SEVERITY_ORDER), default=None,
                         help="Exit non-zero if a campaign at/above this "
                              "severity is found (CI gate).")
+    p_corr.add_argument("--analytics", action="store_true",
+                        help="With --format json, also emit graph analytics "
+                             "(hub host, density, linchpin pivot, ATT&CK "
+                             "rollup) per campaign.")
+
+    # export — MISP event / STIX 2.1 bundle from scan findings or the DB.
+    p_exp = sub.add_parser(
+        "export",
+        help="Export findings (or the whole signature DB) as MISP / STIX 2.1.",
+        description="Turn C2DETECT detections into shareable threat intel: a "
+                    "MISP event or a STIX 2.1 bundle (indicator + malware SDOs "
+                    "with ATT&CK kill-chain phases). Reads the same telemetry "
+                    "the scanner does; --db exports the bundled fingerprint DB "
+                    "with no telemetry needed.")
+    p_exp.add_argument("paths", nargs="*",
+                       help="Observation file(s)/dir. Omit + --db to export the "
+                            "signature DB; omit without --db to read stdin.")
+    p_exp.add_argument("--format", choices=("misp", "stix"), default="stix",
+                       help="misp (event JSON) | stix (2.1 bundle)")
+    p_exp.add_argument("--db", action="store_true",
+                       help="Export the bundled signature DB itself (STIX only) "
+                            "as a platform-agnostic C2 fingerprint feed.")
+    p_exp.add_argument("--threshold", type=int, default=DEFAULT_THRESHOLD)
+    p_exp.add_argument("--event-info", dest="event_info",
+                       default="C2DETECT — detected C2 infrastructure",
+                       help="MISP event title (misp format only).")
+    p_exp.add_argument("-o", "--output", help="write to file instead of stdout")
+
+    # beacon — cadence analysis from raw connection timestamps (DFIR).
+    p_beacon = sub.add_parser(
+        "beacon",
+        help="Analyze connection-timestamp cadence for beaconing (offline).",
+        description="Derive beacon statistics (mean interval, jitter as "
+                    "coefficient-of-variation, a regularity score) and a "
+                    "verdict from raw connection timestamps in a log/conn.log. "
+                    "Behavioural detection of call-home cadence; no network.")
+    p_beacon.add_argument("paths", nargs="*",
+                          help="Log file(s) with timestamps (epoch or ISO-8601). "
+                               "If omitted, reads stdin.")
+    p_beacon.add_argument("--dest", default="",
+                          help="Label for the destination being analyzed.")
+    p_beacon.add_argument("--format", choices=("table", "json"), default="table")
+    p_beacon.add_argument("--fail-on-beacon", dest="fail_on_beacon",
+                          action="store_true",
+                          help="Exit non-zero if the series is judged a beacon "
+                               "(CI/hunt gate).")
 
     # probe — AUTHORIZATION-GATED active TLS probe (OFF by default).
     p_probe = sub.add_parser(
@@ -526,6 +581,92 @@ def _load_allowlist(args) -> List[str]:
     return entries
 
 
+def _write_or_print(text: str, output: Optional[str]) -> int:
+    """Write ``text`` to ``output`` (if set) or stdout. Returns exit code."""
+    if output:
+        try:
+            with open(output, "w", encoding="utf-8") as fh:
+                fh.write(text if text.endswith("\n") else text + "\n")
+        except OSError as exc:
+            print(f"error: cannot write to {output!r}: {exc}", file=sys.stderr)
+            return 2
+        print(f"wrote {output}", file=sys.stderr)
+    else:
+        print(text)
+    return 0
+
+
+def _run_export(args) -> int:
+    """Export findings (or the bundled DB) as MISP / STIX 2.1."""
+    from .export import to_misp, to_stix, signatures_to_stix
+
+    if args.db:
+        if args.format != "stix":
+            print("error: --db exports STIX only (use --format stix).",
+                  file=sys.stderr)
+            return 2
+        return _write_or_print(
+            json.dumps(signatures_to_stix(), indent=2, sort_keys=False),
+            args.output)
+
+    try:
+        blobs = _gather_inputs(args.paths) if args.paths else [_read_stdin()]
+    except OSError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    results: List[ScanResult] = []
+    for blob in blobs:
+        results.extend(_results_for_blob(blob, "", args.threshold))
+
+    if args.format == "misp":
+        doc = to_misp(results, event_info=args.event_info)
+    else:
+        doc = to_stix(results)
+    return _write_or_print(json.dumps(doc, indent=2, sort_keys=False),
+                           args.output)
+
+
+def _render_beacon_table(a) -> str:
+    lines = [f"beacon analysis: {a.dest or '(unnamed dest)'}"]
+    lines.append(f"  samples={a.samples}  intervals={a.intervals}")
+    if a.mean_interval is not None:
+        lines.append(f"  mean={a.mean_interval}s  median={a.median_interval}s  "
+                     f"stdev={a.stdev_interval}s")
+        lines.append(f"  jitter (CV)={a.coefficient_of_variation}  "
+                     f"regularity={a.regularity:.3f}")
+    lines.append(f"  VERDICT: {a.verdict.upper()}"
+                 + ("  [BEACON]" if a.is_beacon else ""))
+    return "\n".join(lines)
+
+
+def _run_beacon(args) -> int:
+    """Analyze connection-timestamp cadence for beaconing (offline)."""
+    from .beacon import analyze_text, analyze_timestamps, parse_timestamps
+
+    try:
+        blobs = _gather_inputs(args.paths) if args.paths else [_read_stdin()]
+    except OSError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    # Pool timestamps across all inputs into one series for the destination.
+    ts: List[float] = []
+    for blob in blobs:
+        ts.extend(parse_timestamps(blob))
+    analysis = analyze_timestamps(ts, dest=args.dest)
+
+    if args.format == "json":
+        print(json.dumps({
+            "tool": TOOL_NAME, "version": TOOL_VERSION,
+            "mode": "beacon", **analysis.as_dict(),
+        }, indent=2, sort_keys=False))
+    else:
+        print(_render_beacon_table(analysis))
+
+    if args.fail_on_beacon:
+        return 2 if analysis.is_beacon else 0
+    return 1 if analysis.is_beacon else 0
+
+
 def _run_probe(args) -> int:
     """AUTHORIZATION-GATED active probe handler. Default OFF; refuses out-of-scope."""
     from .active import (
@@ -680,7 +821,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             include_singletons=args.include_singletons,
         )
         if args.format == "json":
-            print(json.dumps(corr_to_json(campaigns), indent=2, sort_keys=False))
+            payload = corr_to_json(campaigns)
+            if getattr(args, "analytics", False):
+                from .correlate import analytics as corr_analytics
+                payload["analytics"] = corr_analytics(campaigns)
+            print(json.dumps(payload, indent=2, sort_keys=False))
         elif args.format == "dot":
             print(corr_to_dot(campaigns))
         else:
@@ -693,6 +838,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             )
             return 2 if gated else 0
         return 1 if campaigns else 0
+
+    if args.command == "export":
+        return _run_export(args)
+
+    if args.command == "beacon":
+        return _run_beacon(args)
 
     if args.command == "probe":
         return _run_probe(args)

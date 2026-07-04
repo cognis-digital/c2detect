@@ -50,16 +50,37 @@ from .active import (
     probe_target,
     probe_targets,
 )
-from .rules import to_sigma, to_suricata, generate
+from .rules import (
+    to_sigma,
+    to_suricata,
+    to_kql,
+    to_splunk,
+    to_eql,
+    to_yara,
+    generate,
+)
 from .correlate import (
     Campaign,
     HostNode,
     SharedPivot,
     correlate,
     correlate_observations,
+    campaign_analytics,
+    analytics,
     PIVOT_WEIGHTS,
     DEFAULT_EDGE_FLOOR,
     DEFAULT_CAMPAIGN_THRESHOLD,
+)
+from .export import (
+    to_misp,
+    to_stix,
+    signatures_to_stix,
+)
+from .beacon import (
+    BeaconAnalysis,
+    analyze_timestamps,
+    analyze_text as analyze_beacon_text,
+    parse_timestamps,
 )
 
 __version__ = TOOL_VERSION
@@ -91,15 +112,28 @@ __all__ = [
     "signatures",
     "to_sigma",
     "to_suricata",
+    "to_kql",
+    "to_splunk",
+    "to_eql",
+    "to_yara",
     "generate",
     "Campaign",
     "HostNode",
     "SharedPivot",
     "correlate",
     "correlate_observations",
+    "campaign_analytics",
+    "analytics",
     "PIVOT_WEIGHTS",
     "DEFAULT_EDGE_FLOOR",
     "DEFAULT_CAMPAIGN_THRESHOLD",
+    "to_misp",
+    "to_stix",
+    "signatures_to_stix",
+    "BeaconAnalysis",
+    "analyze_timestamps",
+    "analyze_beacon_text",
+    "parse_timestamps",
     "AUTHORIZED_USE_BANNER",
     "Scope",
     "ScopeError",
