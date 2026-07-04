@@ -24,19 +24,18 @@ Real, reproducible output — point it at a captured observation and it fingerpr
 
 ```console
 $ c2detect scan demos/01-cobalt-strike-network/observations.json
-host: 10.0.0.5
-  port=50050
+host: 203.0.113.10
+  jarm=07d14d16d21d21d07c42d41d00041d24a458a375eef0c576d23a7bab9a9fb1  port=443
 
   CONF  SEV       FAMILY         INDICATORS
   -----------------------------------------
-    50  critical  Cobalt Strike  port, uri, cert_quirk
+    48  critical  Cobalt Strike  jarm, port
 
-  TOP: Cobalt Strike (50% / critical)
-    - port [+6] matched '50050'
-    - uri [+16] matched '/submit.php'
-    - cert_quirk [+28] matched 'Major Cobalt Strike'
+  TOP: Cobalt Strike (48% / critical)
+    - jarm [+42] matched '07d14d16d21d21d07c42d41d00041d24a458a375eef0c576d23a7bab9a9fb1'
+    - port  [+6] matched '443'
 
-c2detect: 1 C2 indicator(s) across 1 observation(s)
+c2detect: 3 C2 indicator(s) across 3 observation(s)
 ```
 
 It fuses JA4/JARM/certificate/URI/port indicators against a bundled signature DB — and can **emit ready-to-deploy Sigma and Suricata rules** from those same signatures (`c2detect rules`), so a detection goes straight into your SIEM/IDS.
