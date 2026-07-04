@@ -1,44 +1,56 @@
 <a name="top"></a>
 <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=rect&color=0:6b46c1,100:2b6cb0&height=120&section=header&text=C2DETECT&fontSize=48&fontColor=ffffff&fontAlignY=58" width="100%" alt="C2DETECT"/>
+# c2detect
 
-# C2DETECT
+**Fingerprint the C2 server behind the beacon.** Point it at network telemetry and it names the command-and-control framework — Cobalt Strike, Sliver, Mythic, Havoc, Brute Ratel, and 11+ more — with a confidence score and the exact indicators that matched.
 
-### C2 server fingerprinter — Cobalt Strike, Sliver, Mythic, Havoc, Brute Ratel
+[![PyPI](https://img.shields.io/pypi/v/cognis-c2detect.svg)](https://pypi.org/project/cognis-c2detect/) [![CI](https://github.com/cognis-digital/c2detect/actions/workflows/ci.yml/badge.svg)](https://github.com/cognis-digital/c2detect/actions) [![License: COCL 1.0](https://img.shields.io/badge/license-COCL%201.0-blue.svg)](LICENSE) ![C2 families](https://img.shields.io/badge/C2%20families-11%2B-informational) ![Deps](https://img.shields.io/badge/runtime%20deps-none%20(stdlib)-success)
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=18&duration=3500&pause=1000&color=6B46C1&center=true&vCenter=true&width=720&lines=C2+server+fingerprinter++Cobalt+Strike+Sliver+Mythic+Havoc+B;Self-hostable+%C2%B7+MCP-native+%C2%B7+CI-ready+%C2%B7+polyglot" width="720"/>
-
-[![PyPI](https://img.shields.io/pypi/v/cognis-c2detect.svg?color=6b46c1)](https://pypi.org/project/cognis-c2detect/) [![CI](https://github.com/cognis-digital/c2detect/actions/workflows/ci.yml/badge.svg)](https://github.com/cognis-digital/c2detect/actions) [![License: COCL 1.0](https://img.shields.io/badge/License-COCL%201.0-2b6cb0.svg)](LICENSE) [![Suite](https://img.shields.io/badge/Cognis-Neural%20Suite-6b46c1.svg)](https://github.com/cognis-digital)
-
-*Blue Team / Defensive — detect known C2 infrastructure from telemetry. Passive by default; an opt-in, authorization-gated active probe is available for hosts you are authorized to assess.*
+*Blue-team / defensive: detect known C2 infrastructure from telemetry. Passive by default; the active probe is opt-in and authorization-gated.*
 
 </div>
 
 ```bash
 pip install cognis-c2detect
-c2detect scan .            # → prioritized findings in seconds
+c2detect scan .            # → prioritized C2 findings in seconds, offline
 ```
-
 
 <!-- cognis:example:start -->
 
-## Watch the walkthrough
+## See it work
 
-A full narrated tour — setup, the tool in action, and every demo scenario:
-
-[![Watch the c2detect walkthrough](media/walkthrough-thumb.png)](https://github.com/cognis-digital/c2detect/releases/download/walkthrough-v1/walkthrough.mp4)
-
-▶ **[Watch the walkthrough (MP4)](https://github.com/cognis-digital/c2detect/releases/download/walkthrough-v1/walkthrough.mp4)**
-
-## 🔎 Example output
-
-Real, reproducible output from the tool — runs offline:
+Real, reproducible output — point it at a captured observation and it fingerprints the framework:
 
 ```console
-$ c2detect-emit --version
-c2detect 1.4.0
+$ c2detect scan demos/01-cobalt-strike-network/observations.json
+host: 10.0.0.5
+  port=50050
+
+  CONF  SEV       FAMILY         INDICATORS
+  -----------------------------------------
+    50  critical  Cobalt Strike  port, uri, cert_quirk
+
+  TOP: Cobalt Strike (50% / critical)
+    - port [+6] matched '50050'
+    - uri [+16] matched '/submit.php'
+    - cert_quirk [+28] matched 'Major Cobalt Strike'
+
+c2detect: 1 C2 indicator(s) across 1 observation(s)
 ```
+
+It fuses JA4/JARM/certificate/URI/port indicators against a bundled signature DB — and can **emit ready-to-deploy Sigma and Suricata rules** from those same signatures (`c2detect rules`), so a detection goes straight into your SIEM/IDS.
+
+## Why c2detect
+
+| | threat-intel IP lists | JARM alone | **c2detect** |
+|---|:---:|:---:|:---:|
+| Names the C2 *framework* (not just "bad IP") | ✗ | partial | ✅ |
+| JA4 + JARM + cert + URI + port fusion | ✗ | ✗ | ✅ |
+| Confidence score + matched indicators | ✗ | ✗ | ✅ |
+| Generates Sigma / Suricata rules | ✗ | ✗ | ✅ |
+| Campaign correlation (shared infrastructure) | ✗ | ✗ | ✅ |
+| Runs offline, zero runtime deps | varies | ✓ | ✅ |
 
 ```console
 $ c2detect-emit --help
