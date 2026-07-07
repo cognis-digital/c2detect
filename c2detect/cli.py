@@ -643,10 +643,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if args.command == "rules":
         from .rules import generate
-        text = generate(args.format)
+        try:
+            text = generate(args.format)
+        except ValueError as exc:  # unknown format — defensive, choices guard it
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
         if args.output:
-            with open(args.output, "w", encoding="utf-8") as fh:
-                fh.write(text if text.endswith("\n") else text + "\n")
+            try:
+                with open(args.output, "w", encoding="utf-8") as fh:
+                    fh.write(text if text.endswith("\n") else text + "\n")
+            except OSError as exc:
+                print(f"error: cannot write rules to {args.output!r}: {exc}",
+                      file=sys.stderr)
+                return 2
             print(f"wrote {args.format} rules to {args.output}", file=sys.stderr)
         else:
             print(text)

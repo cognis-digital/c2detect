@@ -25,6 +25,21 @@ SCENARIOS = [
     "03_detection_rules",
     "04_incident_response",
     "05_campaign_correlation",
+    "06_sarif_code_scanning",
+    "07_ci_gate",
+    "08_html_report",
+    "09_status_badge",
+    "10_jsonl_streaming",
+    "11_freetext_telemetry",
+    "12_correlation_graph",
+    "13_threshold_tuning",
+    "14_signature_inventory",
+    "15_coverage_selfcheck",
+    "16_feeds_plus_signatures",
+    "17_beacon_cadence",
+    "18_sigma_per_family",
+    "19_correlate_gate",
+    "20_air_gap_workflow",
 ]
 
 
@@ -57,6 +72,25 @@ def test_run_all_executes_every_scenario(capsys):
     run_all.main()
     out = capsys.readouterr().out
     assert "All c2detect demo scenarios completed." in out
+
+
+def test_run_all_lists_twenty_scenarios():
+    """run_all and the demo test list must stay in lock-step at 20 scenarios."""
+    run_all = importlib.import_module("run_all")
+    assert run_all.SCENARIOS == SCENARIOS
+    assert len(SCENARIOS) == 20
+
+
+def test_every_scenario_module_file_exists():
+    for name in SCENARIOS:
+        assert os.path.isfile(os.path.join(DEMOS_DIR, name + ".py")), name
+
+
+def test_each_scenario_has_an_audience_docstring():
+    """Every audience demo documents who it is for (the 'Audience:' marker)."""
+    for name in SCENARIOS:
+        mod = importlib.import_module(name)
+        assert mod.__doc__ and "Audience:" in mod.__doc__, name
 
 
 def test_common_helpers_load_real_fixtures():

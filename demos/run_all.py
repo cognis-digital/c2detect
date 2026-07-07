@@ -18,6 +18,21 @@ SCENARIOS = [
     "03_detection_rules",
     "04_incident_response",
     "05_campaign_correlation",
+    "06_sarif_code_scanning",
+    "07_ci_gate",
+    "08_html_report",
+    "09_status_badge",
+    "10_jsonl_streaming",
+    "11_freetext_telemetry",
+    "12_correlation_graph",
+    "13_threshold_tuning",
+    "14_signature_inventory",
+    "15_coverage_selfcheck",
+    "16_feeds_plus_signatures",
+    "17_beacon_cadence",
+    "18_sigma_per_family",
+    "19_correlate_gate",
+    "20_air_gap_workflow",
 ]
 
 
