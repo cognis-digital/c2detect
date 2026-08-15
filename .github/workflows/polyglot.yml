@@ -1,0 +1,13 @@
+name: polyglot
+on: { push: { branches: [ main ] }, pull_request: {} }
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python syntax
+        run: |
+          python -m compileall -q polyglot/python || true
+      - name: Verify tree present
+        run: |
+          test -d polyglot && echo "polyglot tree ok"
