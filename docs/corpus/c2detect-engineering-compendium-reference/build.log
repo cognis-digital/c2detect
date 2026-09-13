@@ -101,3 +101,106 @@
 [2026-08-15 21:31:13]   [14] Frontier Research and Future Directions in C2 Dete — 5982w
 [2026-08-15 21:31:16] ASSEMBLED -> C:\Users\user\cognis-enhance\c2detect\docs\corpus\c2detect-engineering-compendium-reference\c2detect-engineering-compendium-reference.md (82,932 words, 14 sections)
 [2026-08-15 21:31:16] === complete · 82,932 words -> C:\Users\user\cognis-enhance\c2detect\docs\corpus\c2detect-engineering-compendium-reference\c2detect-engineering-compendium-reference.md ===
+[2026-09-13 10:47:13] === longform corpus · "c2detect — Engineering Compendium & Reference" · target ~120,000w · 14 sections × 6 subs × ~1450w · slot=uncensored · web=off ===
+[2026-09-13 10:47:18] hw: free~2.4GB target~9.5GB evicted=[]
+[2026-09-13 10:49:04] outline: 14 sections
+[2026-09-13 10:49:04]   [01] Introduction to C2 Server Fingerprinting — exists, skip
+[2026-09-13 10:49:09]   pacing 5s (hot: VRAM 85.2%)
+[2026-09-13 10:56:35]     · TCP/IP Stack Fundamentals and C2 Traffic Chara (885w)
+[2026-09-13 11:01:30]     · Encapsulation Techniques in C2 Communication (776w)
+[2026-09-13 11:07:14]     · Protocol-Specific Features of Cobalt Strike C2 (870w)
+[2026-09-13 11:14:09]     · Obfuscation and Encryption Mechanisms in C2 Tr (915w)
+[2026-09-13 11:21:06]     · Beaconing Patterns and Timing Analysis in C2 C (1154w)
+[2026-09-13 11:26:16]     · Network Layer Anomalies and C2 Traffic Identif (1011w)
+[2026-09-13 11:26:16]   [02] Fundamentals of Command and Control Communication  — 5666w
+[2026-09-13 11:26:20]   pacing 5s (hot: VRAM 83.5%)
+[2026-09-13 11:31:30]     · Cobalt Strike Core Components and Execution Fl (833w)
+[2026-09-13 11:40:46]     · Network Communication Protocols and C2 Traffic (1704w)
+[2026-09-13 11:45:36]     · Beacon Client Behavior and Session Management (830w)
+[2026-09-13 11:50:29]     · TLS/SSL Implementation and Certificate Fingerp (826w)
+[2026-09-13 11:58:05]     · Process Injection Techniques and Memory Manipu (1486w)
+[2026-09-13 12:02:20]     · Artifact Generation and System-Level Indicator (880w)
+[2026-09-13 12:02:20]   [03] Cobalt Strike: Architecture, Network Behavior, and — 6611w
+[2026-09-13 12:02:23]   pacing 5s (hot: VRAM 83.5%)
+[2026-09-13 12:07:49]     · Sliver Architecture and Modular Component Desi (1004w)
+[2026-09-13 12:25:07]     · Sliver C2 Protocol and Communication Signature (1519w)
+[2026-09-13 12:29:18]     · Sliver Beaconing Mechanisms and Network Behavi (886w)
+[2026-09-13 12:34:35]     · Sliver Payload Delivery and Execution Signatur (1026w)
+[2026-09-13 12:40:13]     · Sliver Obfuscation Techniques and Evasion Stra (1051w)
+[2026-09-13 12:45:36]     · Sliver Detection Challenges and Signature Evol (1096w)
+[2026-09-13 12:45:36]   [04] Sliver: Modular Design and C2 Signatures in Modern — 6636w
+[2026-09-13 12:45:39]   pacing 5s (hot: VRAM 83.5%)
+[2026-09-13 12:50:23]     · Containerized Execution Architecture in Mythic (933w)
+[2026-09-13 12:54:11]     · Mythic's C2 Protocol Design and Traffic Patter (786w)
+[2026-09-13 12:59:41]     · Adaptive Signature Generation Mechanisms (1096w)
+[2026-09-13 13:04:15]     · Runtime Behavior Analysis and Detection Evasio (969w)
+[2026-09-13 13:09:57]     · Mythic's Integration with Container Orchestrat (973w)
+[2026-09-13 13:24:57]     · Case Studies: Mythic in Real-World Attack Simu (787w)
+[2026-09-13 13:24:57]   [05] Mythic: Containerized Execution and Adaptive C2 Si — 5594w
+[2026-09-13 13:25:00]   pacing 5s (hot: VRAM 83.6%)
+[2026-09-13 13:30:52]     · Havoc C2 Architecture and Communication Flow (803w)
+[2026-09-13 13:37:33]     · Havoc TLS Implementation and Cipher Suite Usag (878w)
+[2026-09-13 13:47:26]     · Havoc Beaconing Patterns and Timing Strategies (843w)
+[2026-09-13 13:52:30]     · Havoc Network Evasion Techniques and Obfuscati (960w)
+[2026-09-13 14:00:40]     · Havoc Payload Delivery and Execution Mechanism (1093w)
+[2026-09-13 14:06:57]     · Havoc Detection Challenges and Signature Evasi (870w)
+[2026-09-13 14:06:57]   [06] Havoc: Stealthy C2 and Evasion Techniques — 5500w
+[2026-09-13 14:07:01]   pacing 8s (hot: VRAM 96.1%)
+[2026-09-13 14:17:14]     · Brute Ratel Architecture Overview (1663w)
+[2026-09-13 14:23:55]     · Network Traffic Patterns and Baseline Analysis (1313w)
+[2026-09-13 14:31:32]     · Payload Encoding and Decoding Mechanisms (1393w)
+[2026-09-13 14:36:50]     · C2 Communication Protocol Deep Dive (949w)
+[2026-09-13 14:41:48]     · Operational Indicators and Behavioral Signatur (980w)
+[2026-09-13 14:48:45]     · Integration with c2detect for Detection and Mi (1254w)
+[2026-09-13 14:48:45]   [07] Brute Ratel: Lightweight C2 and Network Anomalies — 7599w
+[2026-09-13 14:55:07]     · C2 Traffic Pattern Recognition Techniques (1175w)
+[2026-09-13 15:00:48]     · Statistical Analysis of Network Traffic (1115w)
+[2026-09-13 15:06:12]     · Deep Packet Inspection and Payload Analysis (1076w)
+[2026-09-13 15:11:01]     · Time-Series Analysis of C2 Communication (964w)
+[2026-09-13 15:15:40]     · Behavioral Profiling of C2 Clients (985w)
+[2026-09-13 15:21:52]     · Limitations of Current C2 Detection Methods (1198w)
+[2026-09-13 15:21:52]   [08] C2 Traffic Analysis: Tools, Methods, and Limitatio — 6560w
+[2026-09-13 15:27:10]     · Feature Extraction from Network Traffic (971w)
+[2026-09-13 15:32:31]     · Model Architecture for Anomaly Detection (1019w)
+[2026-09-13 15:38:16]     · Training Data Collection and Labeling (1096w)
+[2026-09-13 15:44:04]     · Evaluation Metrics for Fingerprint Accuracy (1091w)
+[2026-09-13 16:00:21]     · Real-Time Inference and Deployment Challenges (1267w)
+[2026-09-13 16:04:38]     · Adversarial Robustness in C2 Fingerprinting (809w)
+[2026-09-13 16:04:38]   [09] Dynamic Fingerprinting: Machine Learning Approache — 6299w
+[2026-09-13 16:14:02]     · Obfuscation and Packing in C2 Communication Ch (1705w)
+[2026-09-13 16:19:38]     · Domain Generation Algorithms (DGAs) and Their  (1105w)
+[2026-09-13 16:23:41]     · TLS/SSL Encryption and Certificate Manipulatio (870w)
+[2026-09-13 16:28:25]     · Behavioral Evasion Through Process Injection a (1019w)
+[2026-09-13 16:31:02]     · Network Traffic Normalization and Protocol Mim (583w)
+[2026-09-13 16:34:31]     · Dynamic Code Generation and Runtime Polymorphi (695w)
+[2026-09-13 16:34:31]   [10] Evasion Techniques and Countermeasures in Modern C — 6036w
+[2026-09-13 16:39:45]     · Windows Registry-Based C2 Configuration Detect (970w)
+[2026-09-13 16:44:30]     · Linux Systemd Service and Init Script Analysis (985w)
+[2026-09-13 16:48:48]     · macOS LaunchDaemon and LaunchAgent C2 Persiste (861w)
+[2026-09-13 16:52:40]     · Network Stack Behavior Across Operating System (825w)
+[2026-09-13 16:59:42]     · Process Injection Techniques in Cross-Platform (1420w)
+[2026-09-13 17:09:16]     · Memory Resident C2 Communication Patterns (1900w)
+[2026-09-13 17:09:16]   [11] Cross-Platform C2 Analysis: Windows, Linux, and ma — 7011w
+[2026-09-13 17:12:55]     · Cobalt Strike Beacon in a Corporate Network: E (710w)
+[2026-09-13 17:17:24]     · Sliver's Stealthy C2 Over HTTP/2: Analyzing TL (885w)
+[2026-09-13 17:22:05]     · Mythic's Modular C2 Architecture: Detecting Dy (1031w)
+[2026-09-13 17:26:12]     · Havoc's Encrypted C2 Traffic: Decrypting and I (891w)
+[2026-09-13 17:30:02]     · Brute Ratel's Adaptive C2 Signatures: Challeng (805w)
+[2026-09-13 17:35:26]     · Cross-Platform C2 Evasion: A Comparative Analy (962w)
+[2026-09-13 17:35:26]   [12] Case Studies: Real-World C2 Detection Challenges a — 5360w
+[2026-09-13 17:42:46]     · Behavioral Pattern Analysis in C2 Communicatio (1289w)
+[2026-09-13 17:48:20]     · TLS Cipher Suite and Extension Fingerprinting (1027w)
+[2026-09-13 17:53:17]     · DNS Query Optimization and Subdomain Enumerati (967w)
+[2026-09-13 17:56:43]     · Memory and Process Injection Signatures (714w)
+[2026-09-13 18:00:46]     · Network Stack Anomalies and Traffic Shaping (742w)
+[2026-09-13 18:09:55]     · Obfuscation Techniques and Runtime Code Analys (1620w)
+[2026-09-13 18:09:55]   [13] Advanced C2 Fingerprinting: Beyond Protocol Inspec — 6408w
+[2026-09-13 18:15:53]     · Adaptive Behavioral Anomaly Detection in Dynam (1056w)
+[2026-09-13 18:20:11]     · Quantum Machine Learning for C2 Traffic Patter (805w)
+[2026-09-13 18:25:10]     · Zero-Knowledge Proofs in C2 Communication Evas (893w)
+[2026-09-13 18:30:38]     · Multi-Modal Sensor Fusion for C2 Network Infer (1025w)
+[2026-09-13 18:35:51]     · Cognitive Radio Techniques for C2 Frequency Ho (907w)
+[2026-09-13 18:41:13]     · Decentralized C2 Architectures and Their Impli (997w)
+[2026-09-13 18:41:13]   [14] Frontier Research: Future Directions in C2 Detecti — 5745w
+[2026-09-13 18:41:16] ASSEMBLED -> C:\Users\user\cognis-enhance\c2detect\docs\corpus\c2detect-engineering-compendium-reference\c2detect-engineering-compendium-reference.md (163,957 words, 27 sections)
+[2026-09-13 18:41:16] === complete · 163,957 words -> C:\Users\user\cognis-enhance\c2detect\docs\corpus\c2detect-engineering-compendium-reference\c2detect-engineering-compendium-reference.md ===

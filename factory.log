@@ -412,3 +412,8 @@
 [2026-08-15 22:26:52] === enhance · c2detect · words=120000 loc>=10000 langs=9 push=True ===
 [2026-08-15 22:26:58] === done · c2detect · loc=10353 · {'committed': True, 'pushed': False, 'push_err': "fatal: unable to access 'https://github.com/cognis-digital/c2detect.git/': Could not resolve host: github.com"} ===
 [2026-08-15 22:26:59] === enhance · c2detect · words=120000 loc>=10000 langs=9 push=True ===
+[2026-08-15 22:28:11] === done · c2detect · loc=10353 · {'committed': True, 'pushed': True, 'push_err': ''} ===
+[2026-09-13 10:47:07] === enhance · c2detect · words=120000 loc>=10000 langs=9 push=True ===
+[2026-09-13 10:47:13] phase DOCS — longform 120000-word corpus -> docs/corpus/
+[2026-09-13 18:41:16] phase POLYGLOT — expanding to >= 10000 LOC across 9 languages
+[2026-09-13 18:41:43]   facets: ['http_probe', 'websocket_probe', 'dns_probe', 'tls_fingerprint', 'beacon_detector', 'traffic_analyzer']
